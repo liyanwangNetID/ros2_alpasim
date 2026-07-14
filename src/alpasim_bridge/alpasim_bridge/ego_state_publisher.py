@@ -21,6 +21,24 @@ from rclpy.qos import (
 from alpasim_msgs.msg import EgoState
 from sensor_msgs.msg import CompressedImage
 
+from geometry_msgs.msg import TransformStamped
+from rosgraph_msgs.msg import Clock
+from tf2_ros import TransformBroadcaster, StaticTransformBroadcaster
+
+
+CAMERA_FRAME_IDS = {
+    "camera_cross_left_120fov":
+        "camera_cross_left_120fov_optical",
+
+    "camera_front_wide_120fov":
+        "camera_front_wide_120fov_optical",
+
+    "camera_cross_right_120fov":
+        "camera_cross_right_120fov_optical",
+
+    "camera_rear_left_70fov":
+        "camera_rear_left_70fov_optical",
+}
 
 CAMERA_TOPICS = {
     "camera_cross_left_120fov":
@@ -87,6 +105,15 @@ class EgoStatePublisher(Node):
         self.ego_publisher = self.create_publisher(
             EgoState,
             "/alpasim/ego_state",
+            10,
+        )
+
+        self.tf_broadcaster = TransformBroadcaster(self)
+        self.static_tf_broadcaster = StaticTransformBroadcaster(self)
+
+        self.clock_publisher = self.create_publisher(
+            Clock,
+            "/clock",
             10,
         )
 
@@ -158,6 +185,59 @@ class EgoStatePublisher(Node):
             self.get_logger().info(
                 f"{logical_id} -> {topic}"
             )
+
+        self.publish_camera_static_transforms()
+    
+    def publish_camera_static_transforms(self) -> None:
+        """Publish base_link -> camera optical static transforms."""
+
+        camera_extrinsics = {
+            "camera_cross_left_120fov_optical": {
+                "translation": [1.646354, 0.143369, 1.521469],
+                "rotation": [0.679354, -0.207915, 0.215233, -0.670018],
+            },
+            "camera_front_wide_120fov_optical": {
+                "translation": [1.670100, -0.025875, 1.522623],
+                "rotation": [0.509222, -0.503331, 0.495086, -0.492180],
+            },
+            "camera_cross_right_120fov_optical": {
+                "translation": [1.626168, -0.161517, 1.526269],
+                "rotation": [0.205424, -0.674057, 0.676355, -0.214458],
+            },
+            "camera_rear_left_70fov_optical": {
+                "translation": [-0.486641, -0.000595, 1.486321],
+                "rotation": [0.503851, 0.497823, -0.499723, -0.498582],
+            },
+        }
+
+        transforms = []
+
+        for child_frame_id, extrinsics in camera_extrinsics.items():
+            transform = TransformStamped()
+
+            transform.header.stamp = self.get_clock().now().to_msg()
+            transform.header.frame_id = "base_link"
+            transform.child_frame_id = child_frame_id
+
+            translation = extrinsics["translation"]
+            transform.transform.translation.x = float(translation[0])
+            transform.transform.translation.y = float(translation[1])
+            transform.transform.translation.z = float(translation[2])
+
+            rotation = extrinsics["rotation"]
+            transform.transform.rotation.x = float(rotation[0])
+            transform.transform.rotation.y = float(rotation[1])
+            transform.transform.rotation.z = float(rotation[2])
+            transform.transform.rotation.w = float(rotation[3])
+
+            transforms.append(transform)
+
+        self.static_tf_broadcaster.sendTransform(transforms)
+
+        self.get_logger().info(
+            "Published static camera transforms: "
+            "base_link -> four camera optical frames"
+        )
 
     def camera_server_loop(self) -> None:
         while not self.stop_event.is_set():
@@ -268,10 +348,11 @@ class EgoStatePublisher(Node):
 
         timestamp_us = int(state["timestamp_us"])
 
-        msg.stamp.sec = timestamp_us // 1_000_000
-        msg.stamp.nanosec = (
-            timestamp_us % 1_000_000
-        ) * 1000
+        stamp_sec = timestamp_us // 1_000_000
+        stamp_nanosec = (timestamp_us % 1_000_000) * 1000
+
+        msg.stamp.sec = stamp_sec
+        msg.stamp.nanosec = stamp_nanosec
 
         msg.pose_frame_id = str(
             state.get("pose_frame_id", "map")
@@ -330,6 +411,28 @@ class EgoStatePublisher(Node):
 
         msg.speed = float(state["speed"])
 
+        clock_msg = Clock()
+        clock_msg.clock.sec = stamp_sec
+        clock_msg.clock.nanosec = stamp_nanosec
+        self.clock_publisher.publish(clock_msg)
+
+        transform = TransformStamped()
+        transform.header.stamp.sec = stamp_sec
+        transform.header.stamp.nanosec = stamp_nanosec
+        transform.header.frame_id = msg.pose_frame_id
+        transform.child_frame_id = msg.child_frame_id
+
+        transform.transform.translation.x = msg.position.x
+        transform.transform.translation.y = msg.position.y
+        transform.transform.translation.z = msg.position.z
+
+        transform.transform.rotation.x = msg.orientation.x
+        transform.transform.rotation.y = msg.orientation.y
+        transform.transform.rotation.z = msg.orientation.z
+        transform.transform.rotation.w = msg.orientation.w
+
+        self.tf_broadcaster.sendTransform(transform)
+
         self.ego_publisher.publish(msg)
         self.ego_count += 1
 
@@ -356,7 +459,7 @@ class EgoStatePublisher(Node):
             timestamp_us % 1_000_000
         ) * 1000
 
-        msg.header.frame_id = logical_id
+        msg.header.frame_id = CAMERA_FRAME_IDS[logical_id]
         msg.format = detect_image_format(image_bytes)
         msg.data = image_bytes
 
