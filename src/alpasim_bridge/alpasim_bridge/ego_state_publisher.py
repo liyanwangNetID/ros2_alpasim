@@ -273,8 +273,16 @@ class EgoStatePublisher(Node):
             timestamp_us % 1_000_000
         ) * 1000
 
-        msg.frame_id = str(
-            state.get("frame_id", "alpasim_local")
+        msg.pose_frame_id = str(
+            state.get("pose_frame_id", "map")
+        )
+
+        msg.child_frame_id = str(
+            state.get("child_frame_id", "base_link")
+        )
+
+        msg.dynamics_frame_id = str(
+            state.get("dynamics_frame_id", "base_link")
         )
 
         position = state["position"]
