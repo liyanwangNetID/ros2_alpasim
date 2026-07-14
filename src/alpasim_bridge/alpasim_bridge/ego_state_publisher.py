@@ -55,25 +55,57 @@ class EgoStatePublisher(Node):
         msg = EgoState()
 
         timestamp_us = int(state["timestamp_us"])
+
         msg.stamp.sec = timestamp_us // 1_000_000
         msg.stamp.nanosec = (timestamp_us % 1_000_000) * 1000
 
         msg.frame_id = str(state.get("frame_id", "alpasim_local"))
-        msg.x = float(state["x"])
-        msg.y = float(state["y"])
-        msg.z = float(state["z"])
-        msg.yaw = float(state["yaw"])
+
+        position = state["position"]
+        msg.position.x = float(position["x"])
+        msg.position.y = float(position["y"])
+        msg.position.z = float(position["z"])
+
+        orientation = state["orientation"]
+        msg.orientation.x = float(orientation["x"])
+        msg.orientation.y = float(orientation["y"])
+        msg.orientation.z = float(orientation["z"])
+        msg.orientation.w = float(orientation["w"])
+
+        linear_velocity = state["linear_velocity"]
+        msg.linear_velocity.x = float(linear_velocity["x"])
+        msg.linear_velocity.y = float(linear_velocity["y"])
+        msg.linear_velocity.z = float(linear_velocity["z"])
+
+        angular_velocity = state["angular_velocity"]
+        msg.angular_velocity.x = float(angular_velocity["x"])
+        msg.angular_velocity.y = float(angular_velocity["y"])
+        msg.angular_velocity.z = float(angular_velocity["z"])
+
+        linear_acceleration = state["linear_acceleration"]
+        msg.linear_acceleration.x = float(linear_acceleration["x"])
+        msg.linear_acceleration.y = float(linear_acceleration["y"])
+        msg.linear_acceleration.z = float(linear_acceleration["z"])
+
+        angular_acceleration = state["angular_acceleration"]
+        msg.angular_acceleration.x = float(angular_acceleration["x"])
+        msg.angular_acceleration.y = float(angular_acceleration["y"])
+        msg.angular_acceleration.z = float(angular_acceleration["z"])
+
         msg.speed = float(state["speed"])
 
         self.publisher.publish(msg)
+
         self.received_count += 1
 
         if self.received_count % 20 == 0:
             self.get_logger().info(
-                f"Published {self.received_count} states: "
+                f"Published {self.received_count} ego states: "
                 f"t={timestamp_us / 1e6:.3f}s "
-                f"xyz=({msg.x:.2f}, {msg.y:.2f}, {msg.z:.2f}) "
-                f"yaw={msg.yaw:.3f} speed={msg.speed:.2f}"
+                f"position=({msg.position.x:.2f}, "
+                f"{msg.position.y:.2f}, "
+                f"{msg.position.z:.2f}) "
+                f"speed={msg.speed:.2f} m/s"
             )
 
     def destroy_node(self):
