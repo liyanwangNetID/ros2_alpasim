@@ -1,3 +1,5 @@
+import os
+
 from pathlib import Path
 
 from ament_index_python.packages import get_package_share_directory
@@ -14,6 +16,8 @@ def generate_launch_description():
 
     urdf_path = package_share / "urdf" / "ego_vehicle.urdf"
     robot_description = urdf_path.read_text(encoding="utf-8")
+
+    rviz_config_path = os.path.join(package_share, 'rviz', 'my_config.rviz')
 
     robot_state_publisher = Node(
         package="robot_state_publisher",
@@ -32,6 +36,7 @@ def generate_launch_description():
         package="rviz2",
         executable="rviz2",
         name="rviz2",
+        arguments=['-d', rviz_config_path],
         output="screen",
         parameters=[
             {
