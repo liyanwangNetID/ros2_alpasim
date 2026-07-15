@@ -21,6 +21,8 @@ from rclpy.qos import (
 from alpasim_msgs.msg import EgoState
 from sensor_msgs.msg import CompressedImage
 
+from std_msgs.msg import String
+
 from geometry_msgs.msg import TransformStamped
 from rosgraph_msgs.msg import Clock
 from tf2_ros import TransformBroadcaster, StaticTransformBroadcaster
@@ -32,6 +34,9 @@ CAMERA_FRAME_IDS = {
 
     "camera_front_wide_120fov":
         "camera_front_wide_120fov_optical",
+
+    "camera_front_tele_30fov":
+        "camera_front_tele_30fov_optical",
 
     "camera_cross_right_120fov":
         "camera_cross_right_120fov_optical",
@@ -47,6 +52,9 @@ CAMERA_TOPICS = {
     "camera_front_wide_120fov":
         "/alpasim/camera/front_wide/image/compressed",
 
+    "camera_front_tele_30fov":
+        "/alpasim/camera/front_tele/image/compressed",
+
     "camera_cross_right_120fov":
         "/alpasim/camera/cross_right/image/compressed",
 
@@ -54,6 +62,31 @@ CAMERA_TOPICS = {
         "/alpasim/camera/rear/image/compressed",
 }
 
+CAMERA_CALIBRATION_TOPICS = {
+    "camera_cross_left_120fov":
+        "/alpasim/camera/cross_left/calibration",
+
+    "camera_front_wide_120fov":
+        "/alpasim/camera/front_wide/calibration",
+
+    "camera_front_tele_30fov":
+        "/alpasim/camera/front_tele/calibration",
+
+    "camera_cross_right_120fov":
+        "/alpasim/camera/cross_right/calibration",
+
+    "camera_rear_left_70fov":
+        "/alpasim/camera/rear/calibration",
+}
+
+def first_present(mapping, names):
+    for name in names:
+        if name in mapping:
+            return mapping[name]
+
+    raise KeyError(
+        f"None of the keys {names} were found in {mapping.keys()}"
+    )
 
 def detect_image_format(data: bytes) -> str:
     """Infer common encoded image formats from file magic bytes."""
@@ -90,6 +123,8 @@ class EgoStatePublisher(Node):
     def __init__(self) -> None:
         super().__init__("alpasim_sensor_publisher")
 
+        self.camera_calibrations: dict[str, dict[str, Any]] = {}
+
         self.declare_parameter("ego_udp_host", "127.0.0.1")
         self.declare_parameter("ego_udp_port", 15000)
 
@@ -124,6 +159,13 @@ class EgoStatePublisher(Node):
             durability=DurabilityPolicy.VOLATILE,
         )
 
+        calibration_qos = QoSProfile(
+            reliability=ReliabilityPolicy.RELIABLE,
+            durability=DurabilityPolicy.TRANSIENT_LOCAL,
+            history=HistoryPolicy.KEEP_LAST,
+            depth=1,
+        )
+
         self.camera_publishers = {
             logical_id: self.create_publisher(
                 CompressedImage,
@@ -131,6 +173,15 @@ class EgoStatePublisher(Node):
                 camera_qos,
             )
             for logical_id, topic in CAMERA_TOPICS.items()
+        }
+
+        self.calibration_publishers = {
+            logical_id: self.create_publisher(
+                String,
+                topic,
+                calibration_qos,
+            )
+            for logical_id, topic in CAMERA_CALIBRATION_TOPICS.items()
         }
 
         self.ego_socket = socket.socket(
@@ -186,58 +237,130 @@ class EgoStatePublisher(Node):
                 f"{logical_id} -> {topic}"
             )
 
-        self.publish_camera_static_transforms()
-    
-    def publish_camera_static_transforms(self) -> None:
-        """Publish base_link -> camera optical static transforms."""
+        # self.publish_camera_static_transforms()
 
-        camera_extrinsics = {
-            "camera_cross_left_120fov_optical": {
-                "translation": [1.646354, 0.143369, 1.521469],
-                "rotation": [0.679354, -0.207915, 0.215233, -0.670018],
-            },
-            "camera_front_wide_120fov_optical": {
-                "translation": [1.670100, -0.025875, 1.522623],
-                "rotation": [0.509222, -0.503331, 0.495086, -0.492180],
-            },
-            "camera_cross_right_120fov_optical": {
-                "translation": [1.626168, -0.161517, 1.526269],
-                "rotation": [0.205424, -0.674057, 0.676355, -0.214458],
-            },
-            "camera_rear_left_70fov_optical": {
-                "translation": [-0.486641, -0.000595, 1.486321],
-                "rotation": [0.503851, 0.497823, -0.499723, -0.498582],
-            },
-        }
+    def publish_camera_static_transform_from_metadata(
+        self,
+        logical_id: str,
+        camera_metadata: dict[str, Any],
+    ) -> None:
+        """Publish base_link -> camera optical TF from Runtime metadata."""
 
-        transforms = []
+        available_camera = camera_metadata["available_camera"]
+        pose = available_camera["rig_to_camera"]
 
-        for child_frame_id, extrinsics in camera_extrinsics.items():
-            transform = TransformStamped()
+        # common.Pose is serialized by protobuf JSON as:
+        # {
+        #   "vec": {...},
+        #   "quat": {...}
+        # }
+        translation = first_present(
+            pose,
+            ["vec", "translation", "vec3", "position"],
+        )
 
-            transform.header.stamp = self.get_clock().now().to_msg()
-            transform.header.frame_id = "base_link"
-            transform.child_frame_id = child_frame_id
+        rotation = first_present(
+            pose,
+            ["quat", "rotation", "orientation"],
+        )
 
-            translation = extrinsics["translation"]
-            transform.transform.translation.x = float(translation[0])
-            transform.transform.translation.y = float(translation[1])
-            transform.transform.translation.z = float(translation[2])
+        transform = TransformStamped()
 
-            rotation = extrinsics["rotation"]
-            transform.transform.rotation.x = float(rotation[0])
-            transform.transform.rotation.y = float(rotation[1])
-            transform.transform.rotation.z = float(rotation[2])
-            transform.transform.rotation.w = float(rotation[3])
+        # Static TF is timeless; the timestamp is not used for interpolation.
+        transform.header.stamp = self.get_clock().now().to_msg()
+        transform.header.frame_id = "base_link"
+        transform.child_frame_id = CAMERA_FRAME_IDS[logical_id]
 
-            transforms.append(transform)
+        transform.transform.translation.x = float(
+            first_present(translation, ["x"])
+        )
+        transform.transform.translation.y = float(
+            first_present(translation, ["y"])
+        )
+        transform.transform.translation.z = float(
+            first_present(translation, ["z"])
+        )
 
-        self.static_tf_broadcaster.sendTransform(transforms)
+        transform.transform.rotation.x = float(
+            first_present(rotation, ["x"])
+        )
+        transform.transform.rotation.y = float(
+            first_present(rotation, ["y"])
+        )
+        transform.transform.rotation.z = float(
+            first_present(rotation, ["z"])
+        )
+        transform.transform.rotation.w = float(
+            first_present(rotation, ["w"])
+        )
+
+        self.static_tf_broadcaster.sendTransform(transform)
 
         self.get_logger().info(
-            "Published static camera transforms: "
-            "base_link -> four camera optical frames"
+            "Published camera TF from Runtime metadata: "
+            f"base_link -> {transform.child_frame_id}; "
+            "translation=("
+            f"{transform.transform.translation.x:.6f}, "
+            f"{transform.transform.translation.y:.6f}, "
+            f"{transform.transform.translation.z:.6f}); "
+            "quaternion=("
+            f"{transform.transform.rotation.x:.6f}, "
+            f"{transform.transform.rotation.y:.6f}, "
+            f"{transform.transform.rotation.z:.6f}, "
+            f"{transform.transform.rotation.w:.6f})"
         )
+
+    
+    # def publish_camera_static_transforms(self) -> None:
+    #     """Publish base_link -> camera optical static transforms."""
+
+    #     camera_extrinsics = {
+    #         "camera_cross_left_120fov_optical": {
+    #             "translation": [1.646354, 0.143369, 1.521469],
+    #             "rotation": [0.679354, -0.207915, 0.215233, -0.670018],
+    #         },
+    #         "camera_front_wide_120fov_optical": {
+    #             "translation": [1.670100, -0.025875, 1.522623],
+    #             "rotation": [0.509222, -0.503331, 0.495086, -0.492180],
+    #         },
+    #         "camera_cross_right_120fov_optical": {
+    #             "translation": [1.626168, -0.161517, 1.526269],
+    #             "rotation": [0.205424, -0.674057, 0.676355, -0.214458],
+    #         },
+    #         "camera_rear_left_70fov_optical": {
+    #             "translation": [-0.486641, -0.000595, 1.486321],
+    #             "rotation": [0.503851, 0.497823, -0.499723, -0.498582],
+    #         },
+    #     }
+
+    #     transforms = []
+
+    #     for child_frame_id, extrinsics in camera_extrinsics.items():
+    #         transform = TransformStamped()
+
+    #         transform.header.stamp = self.get_clock().now().to_msg()
+    #         transform.header.frame_id = "base_link"
+    #         transform.child_frame_id = child_frame_id
+
+    #         translation = extrinsics["translation"]
+    #         transform.transform.translation.x = float(translation[0])
+    #         transform.transform.translation.y = float(translation[1])
+    #         transform.transform.translation.z = float(translation[2])
+
+    #         rotation = extrinsics["rotation"]
+    #         transform.transform.rotation.x = float(rotation[0])
+    #         transform.transform.rotation.y = float(rotation[1])
+    #         transform.transform.rotation.z = float(rotation[2])
+    #         transform.transform.rotation.w = float(rotation[3])
+
+    #         transforms.append(transform)
+
+    #     self.static_tf_broadcaster.sendTransform(transforms)
+
+    #     self.get_logger().info(
+    #         "Published static camera transforms: "
+    #         "base_link -> four camera optical frames"
+    #     )
 
     def camera_server_loop(self) -> None:
         while not self.stop_event.is_set():
@@ -442,6 +565,46 @@ class EgoStatePublisher(Node):
         image_bytes: bytes,
     ) -> None:
         logical_id = str(header["camera_logical_id"])
+        camera_metadata = header.get("camera_metadata")
+
+        # Process calibration exactly once per camera.
+        if (
+            camera_metadata is not None
+            and logical_id not in self.camera_calibrations
+        ):
+            self.camera_calibrations[logical_id] = camera_metadata
+
+            calibration_json = json.dumps(
+                camera_metadata,
+                indent=2,
+                sort_keys=True,
+            )
+
+            calibration_msg = String()
+            calibration_msg.data = calibration_json
+
+            calibration_publisher = self.calibration_publishers.get(
+                logical_id
+            )
+
+            if calibration_publisher is not None:
+                calibration_publisher.publish(calibration_msg)
+
+            self.get_logger().info(
+                f"Published calibration for {logical_id}"
+            )
+
+            try:
+                self.publish_camera_static_transform_from_metadata(
+                    logical_id,
+                    camera_metadata,
+                )
+            except (KeyError, TypeError, ValueError) as exc:
+                self.get_logger().error(
+                    f"Could not publish static TF for {logical_id}: {exc}; "
+                    f"rig_to_camera="
+                    f"{camera_metadata.get('available_camera', {}).get('rig_to_camera')}"
+                )
 
         publisher = self.camera_publishers.get(logical_id)
 
@@ -466,7 +629,6 @@ class EgoStatePublisher(Node):
         publisher.publish(msg)
 
         self.camera_counts[logical_id] += 1
-
         count = self.camera_counts[logical_id]
 
         if count == 1:
