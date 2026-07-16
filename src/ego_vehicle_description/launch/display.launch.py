@@ -19,6 +19,12 @@ def generate_launch_description():
         )
     )
 
+    actor_marker_config_path = (
+        bridge_share
+        / "config"
+        / "actor_markers.yaml"
+    )
+
     urdf_path = (
         vehicle_share
         / "urdf"
@@ -56,6 +62,19 @@ def generate_launch_description():
         ],
     )
 
+    actor_marker_publisher = Node(
+        package="alpasim_bridge",
+        executable="actor_marker_publisher",
+        name="actor_marker_publisher",
+        output="screen",
+        parameters=[
+            str(actor_marker_config_path),
+            {
+                "use_sim_time": True,
+            },
+        ],
+    )
+
     # Fixed transforms in the ego vehicle URDF.
     robot_state_publisher = Node(
         package="robot_state_publisher",
@@ -87,6 +106,7 @@ def generate_launch_description():
         [
             ego_state_publisher,
             actor_state_publisher,
+            actor_marker_publisher,
             robot_state_publisher,
             rviz,
         ]

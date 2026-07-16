@@ -1,0 +1,22 @@
+actor_marker_publisher:
+  ros__parameters:
+
+    input_topic: "/alpasim/actors/current"
+    marker_topic: "/alpasim/actors/markers"
+
+    show_labels: true
+    show_velocity_arrows: true
+
+    # Box transparency: 0.0 fully transparent, 1.0 opaque
+    box_alpha: 0.65
+
+    # Height above the actor box for text labels
+    label_height_offset: 0.5
+
+    # Velocity arrow length:
+    # arrow_length = speed_mps * this value
+    velocity_arrow_scale: 0.5
+
+    # Slightly longer than the normal actor publishing interval.
+    # DELETEALL also removes actors that disappear.
+    marker_lifetime_sec: 1.0

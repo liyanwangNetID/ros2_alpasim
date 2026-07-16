@@ -36,6 +36,10 @@ setup(
             "actor_state_publisher = "
             "alpasim_bridge.actor_state_publisher:main"
         ),
+        (
+            "actor_marker_publisher = "
+            "alpasim_bridge.actor_marker_publisher:main"
+        ),
     ],
 },
 

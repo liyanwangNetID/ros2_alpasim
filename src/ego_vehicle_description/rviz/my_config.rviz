@@ -227,6 +227,22 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: /alpasim/camera/front_tele/image/compressed
       Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: MarkerArray
+      Namespaces:
+        actors/boxes/automobile: true
+        actors/boxes/heavy_truck: true
+        actors/boxes/trailer: true
+        actors/labels: true
+        actors/velocity: true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /alpasim/actors/markers
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -273,7 +289,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 83.29295349121094
+      Distance: 49.95039367675781
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1

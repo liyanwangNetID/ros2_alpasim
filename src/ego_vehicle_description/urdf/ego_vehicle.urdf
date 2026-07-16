@@ -24,7 +24,7 @@
         <box size="4.80 2.00 1.40"/>
       </geometry>
       <material name="vehicle_blue">
-        <color rgba="0.05 0.25 0.80 1.0"/>
+        <color rgba="1.00 0.80 0.00 1.0"/>
       </material>
     </visual>
   </link>
