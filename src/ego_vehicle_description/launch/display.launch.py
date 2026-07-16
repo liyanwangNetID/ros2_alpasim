@@ -1,5 +1,4 @@
 import os
-
 from pathlib import Path
 
 from ament_index_python.packages import get_package_share_directory
@@ -8,17 +7,56 @@ from launch_ros.actions import Node
 
 
 def generate_launch_description():
-    package_share = Path(
+    vehicle_share = Path(
         get_package_share_directory(
             "ego_vehicle_description"
         )
     )
 
-    urdf_path = package_share / "urdf" / "ego_vehicle.urdf"
+    bridge_share = Path(
+        get_package_share_directory(
+            "alpasim_bridge"
+        )
+    )
+
+    urdf_path = (
+        vehicle_share
+        / "urdf"
+        / "ego_vehicle.urdf"
+    )
+
+    actor_config_path = (
+        bridge_share
+        / "config"
+        / "actor_export.yaml"
+    )
+
+
     robot_description = urdf_path.read_text(encoding="utf-8")
 
-    rviz_config_path = os.path.join(package_share, 'rviz', 'my_config.rviz')
+    rviz_config_path = os.path.join(vehicle_share, 'rviz', 'my_config.rviz')
 
+    
+    # Ego state, camera images, calibration, clock and ego TF.
+    ego_state_publisher = Node(
+        package="alpasim_bridge",
+        executable="ego_state_publisher",
+        name="alpasim_sensor_publisher",
+        output="screen",
+    )
+
+    # Current actors, history, ground-truth future and prediction placeholder.
+    actor_state_publisher = Node(
+        package="alpasim_bridge",
+        executable="actor_state_publisher",
+        name="actor_state_publisher",
+        output="screen",
+        parameters=[
+            str(actor_config_path),
+        ],
+    )
+
+    # Fixed transforms in the ego vehicle URDF.
     robot_state_publisher = Node(
         package="robot_state_publisher",
         executable="robot_state_publisher",
@@ -47,6 +85,8 @@ def generate_launch_description():
 
     return LaunchDescription(
         [
+            ego_state_publisher,
+            actor_state_publisher,
             robot_state_publisher,
             rviz,
         ]

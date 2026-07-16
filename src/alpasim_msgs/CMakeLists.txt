@@ -8,6 +8,11 @@ find_package(geometry_msgs REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/EgoState.msg"
+  "msg/ActorState.msg"
+  "msg/ActorStateArray.msg"
+  "msg/TrajectoryPoint.msg"
+  "msg/ActorTrajectory.msg"
+  "msg/ActorTrajectoryArray.msg"
   DEPENDENCIES
     builtin_interfaces
     geometry_msgs

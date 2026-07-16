@@ -1,0 +1,26 @@
+actor_state_publisher:
+  ros__parameters:
+
+    actor_tcp_host: "127.0.0.1"
+    actor_tcp_port: 15002
+
+    # History window maintained by ROS bridge.
+    actor_history_duration_sec: 2.0
+
+    # Future ground-truth output window.
+    # If Runtime supplies less, publish only the available part.
+    actor_future_duration_sec: 5.0
+
+    # Minimum interval between output trajectory points.
+    actor_trajectory_sample_period_sec: 0.5
+
+    # Hard safety limit for the number of points per actor.
+    actor_trajectory_max_points: 64
+
+    # Delete history buffers for actors not seen for this duration.
+    actor_stale_timeout_sec: 5.0
+
+    publish_actor_current: true
+    publish_actor_history: true
+    publish_actor_ground_truth_future: true
+    publish_actor_prediction_placeholder: true
