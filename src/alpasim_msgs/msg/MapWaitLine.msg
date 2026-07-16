@@ -1,0 +1,4 @@
+string id
+string wait_line_type
+bool is_implicit
+alpasim_msgs/MapPolyline polyline

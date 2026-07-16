@@ -1,0 +1,23 @@
+# If empty, return the currently loaded map.
+# If non-empty and different from the loaded scene, the request fails.
+string requested_scene_id
+
+# Client's currently cached map revision.
+# Use 0 if the client has no cached map.
+uint64 known_revision
+---
+bool success
+
+# True when the client already has the current revision.
+# In this case vector_map may be empty.
+bool not_modified
+
+# Human-readable status or error information.
+string message
+
+# Current server revision
+uint64 revision
+
+# Current complete vector map.
+# Empty when success=false or not_modified=true.
+alpasim_msgs/VectorMap vector_map
