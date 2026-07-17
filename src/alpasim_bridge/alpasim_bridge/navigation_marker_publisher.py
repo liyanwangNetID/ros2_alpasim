@@ -268,59 +268,6 @@ class NavigationMarkerPublisher(Node):
 
         return marker
 
-    def make_dashed_line(
-        self,
-        marker_id: int,
-        namespace: str,
-        frame_id: str,
-        points: list[Point],
-        width: float,
-        color: tuple[float, float, float, float],
-        z_offset: float,
-    ) -> Marker:
-        marker = Marker()
-
-        marker.header.frame_id = frame_id
-        marker.header.stamp.sec = 0
-        marker.header.stamp.nanosec = 0
-
-        marker.ns = namespace
-        marker.id = marker_id
-        marker.type = Marker.LINE_LIST
-        marker.action = Marker.ADD
-
-        marker.pose.orientation.w = 1.0
-        marker.scale.x = width
-
-        marker.color.r = color[0]
-        marker.color.g = color[1]
-        marker.color.b = color[2]
-        marker.color.a = color[3]
-
-        marker.points = []
-
-        for index in range(len(points) - 1):
-            if index % 2 != 0:
-                continue
-
-            marker.points.append(
-                self.copy_point(
-                    points[index],
-                    z_offset,
-                )
-            )
-            marker.points.append(
-                self.copy_point(
-                    points[index + 1],
-                    z_offset,
-                )
-            )
-
-        marker.lifetime.sec = 0
-        marker.lifetime.nanosec = 0
-
-        return marker
-
     def publish_current_markers(self) -> None:
         marker_array = MarkerArray()
         marker_array.markers = list(
@@ -414,13 +361,13 @@ class NavigationMarkerPublisher(Node):
             )
             return
 
-        marker = self.make_dashed_line(
+        marker = self.make_line_strip(
             marker_id=self.MODEL_PLAN_MARKER_ID,
             namespace="navigation/model_plan",
             frame_id=message.pose_frame_id,
             points=points,
             width=self.model_plan_width,
-            color=(1.00, 0.45, 0.00, 1.00),
+            color=(1.00, 0.80, 0.00, 1.00),
             z_offset=self.model_plan_z_offset,
         )
 

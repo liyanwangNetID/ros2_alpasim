@@ -64,6 +64,10 @@ class MapMarkerPublisher(Node):
             "request_period_sec",
             1.0,
         )
+        self.declare_parameter(
+            "republish_period_sec",
+            2.0,
+        )
 
         self.declare_parameter(
             "show_lane_centerlines",
@@ -110,6 +114,17 @@ class MapMarkerPublisher(Node):
             "visualization_z_offset",
             0.04,
         )
+
+        republish_period_sec = float(
+            self.get_parameter(
+                "republish_period_sec"
+            ).value
+        )
+
+        if republish_period_sec <= 0.0:
+            raise ValueError(
+                "republish_period_sec must be positive"
+            )
 
         self.service_name = str(
             self.get_parameter("service_name").value
@@ -199,9 +214,18 @@ class MapMarkerPublisher(Node):
         self.map_loaded = False
         self.wait_log_emitted = False
 
+        self.cached_marker_array: (
+            MarkerArray | None
+        ) = None
+
         self.request_timer = self.create_timer(
             max(request_period_sec, 0.1),
             self.request_map,
+        )
+
+        self.republish_timer = self.create_timer(
+            max(republish_period_sec, 0.1),
+            self.republish_cached_markers,
         )
 
         self.get_logger().info(
@@ -209,6 +233,19 @@ class MapMarkerPublisher(Node):
         )
         self.get_logger().info(
             f"Map MarkerArray topic: {marker_topic}"
+        )
+
+    def republish_cached_markers(self) -> None:
+        """Republish the cached static map markers.
+
+        This restores the map if another visualization node or RViz
+        cleared its marker state between rollouts.
+        """
+        if self.cached_marker_array is None:
+            return
+
+        self.marker_publisher.publish(
+            self.cached_marker_array
         )
 
     def request_map(self) -> None:
@@ -257,6 +294,10 @@ class MapMarkerPublisher(Node):
             return
 
         if response.not_modified:
+            if self.cached_marker_array is not None:
+                self.marker_publisher.publish(
+                    self.cached_marker_array
+                )
             return
 
         vector_map = response.vector_map
@@ -271,8 +312,10 @@ class MapMarkerPublisher(Node):
             vector_map
         )
 
+        self.cached_marker_array = marker_array
+
         self.marker_publisher.publish(
-            marker_array
+            self.cached_marker_array
         )
 
         self.known_revision = int(

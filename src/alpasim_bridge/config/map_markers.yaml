@@ -3,6 +3,7 @@ alpasim_map_marker_publisher:
     service_name: "/alpasim/map/get_vector_map"
     marker_topic: "/alpasim/map/markers"
     request_period_sec: 1.0
+    republish_period_sec: 2.0
 
     show_lane_centerlines: true
     show_lane_boundaries: true

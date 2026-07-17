@@ -3,6 +3,7 @@ from pathlib import Path
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
+from launch.actions import TimerAction
 from launch_ros.actions import Node
 
 
@@ -12,7 +13,6 @@ def generate_launch_description():
             "ego_vehicle_description"
         )
     )
-
     bridge_share = Path(
         get_package_share_directory(
             "alpasim_bridge"
@@ -24,67 +24,88 @@ def generate_launch_description():
         / "config"
         / "actor_markers.yaml"
     )
-
     urdf_path = (
         vehicle_share
         / "urdf"
         / "ego_vehicle.urdf"
     )
-
     actor_config_path = (
         bridge_share
         / "config"
         / "actor_export.yaml"
     )
-
     map_server_config_path = (
         bridge_share
         / "config"
         / "map_server.yaml"
     )
-
     map_marker_config_path = (
         bridge_share
         / "config"
         / "map_markers.yaml"
     )
-
     ground_truth_server_config_path = (
         bridge_share
         / "config"
         / "ground_truth_trajectory_server.yaml"
     )
-
     navigation_state_config_path = (
         bridge_share
         / "config"
         / "navigation_state.yaml"
     )
-
     ground_truth_future_config_path = (
         bridge_share
         / "config"
         / "ground_truth_future.yaml"
     )
-
     executed_path_config_path = (
         bridge_share
         / "config"
         / "executed_path.yaml"
     )
-
     navigation_marker_config_path = (
         bridge_share
         / "config"
         / "navigation_markers.yaml"
     )
 
+    robot_description = urdf_path.read_text(
+        encoding="utf-8"
+    )
+    rviz_config_path = os.path.join(
+        vehicle_share,
+        "rviz",
+        "my_config.rviz",
+    )
 
-    robot_description = urdf_path.read_text(encoding="utf-8")
+    # Core data receiver and server nodes start immediately.
+    ego_state_publisher = Node(
+        package="alpasim_bridge",
+        executable="ego_state_publisher",
+        name="alpasim_sensor_publisher",
+        output="screen",
+    )
 
-    rviz_config_path = os.path.join(vehicle_share, 'rviz', 'my_config.rviz')
+    actor_state_publisher = Node(
+        package="alpasim_bridge",
+        executable="actor_state_publisher",
+        name="actor_state_publisher",
+        output="screen",
+        parameters=[
+            str(actor_config_path),
+        ],
+    )
 
-
+    map_server = Node(
+        package="alpasim_bridge",
+        executable="map_server",
+        name="alpasim_map_server",
+        output="screen",
+        parameters=[
+            str(map_server_config_path),
+        ],
+    )
 
     ground_truth_trajectory_server = Node(
         package="alpasim_bridge",
@@ -135,50 +156,7 @@ def generate_launch_description():
         ],
     )
 
-    navigation_marker_publisher = Node(
-        package="alpasim_bridge",
-        executable="navigation_marker_publisher",
-        name="navigation_marker_publisher",
-        output="screen",
-        parameters=[
-            str(navigation_marker_config_path),
-            {
-                "use_sim_time": True,
-            },
-        ],
-    )
-
-
-    
-    # Ego state, camera images, calibration, clock and ego TF.
-    ego_state_publisher = Node(
-        package="alpasim_bridge",
-        executable="ego_state_publisher",
-        name="alpasim_sensor_publisher",
-        output="screen",
-    )
-
-    # Current actors, history, ground-truth future and prediction placeholder.
-    actor_state_publisher = Node(
-        package="alpasim_bridge",
-        executable="actor_state_publisher",
-        name="actor_state_publisher",
-        output="screen",
-        parameters=[
-            str(actor_config_path),
-        ],
-    )
-
-    map_server = Node(
-        package="alpasim_bridge",
-        executable="map_server",
-        name="alpasim_map_server",
-        output="screen",
-        parameters=[
-            str(map_server_config_path),
-        ],
-    )
-
+    # Start the static map visualization immediately.
     map_marker_publisher = Node(
         package="alpasim_bridge",
         executable="map_marker_publisher",
@@ -192,6 +170,7 @@ def generate_launch_description():
         ],
     )
 
+    # Dynamic marker nodes are delayed so the map gets time to load and render.
     actor_marker_publisher = Node(
         package="alpasim_bridge",
         executable="actor_marker_publisher",
@@ -205,7 +184,27 @@ def generate_launch_description():
         ],
     )
 
-    # Fixed transforms in the ego vehicle URDF.
+    navigation_marker_publisher = Node(
+        package="alpasim_bridge",
+        executable="navigation_marker_publisher",
+        name="navigation_marker_publisher",
+        output="screen",
+        parameters=[
+            str(navigation_marker_config_path),
+            {
+                "use_sim_time": True,
+            },
+        ],
+    )
+
+    delayed_dynamic_markers = TimerAction(
+        period=3.0,
+        actions=[
+            actor_marker_publisher,
+            navigation_marker_publisher,
+        ],
+    )
+
     robot_state_publisher = Node(
         package="robot_state_publisher",
         executable="robot_state_publisher",
@@ -223,7 +222,10 @@ def generate_launch_description():
         package="rviz2",
         executable="rviz2",
         name="rviz2",
-        arguments=['-d', rviz_config_path],
+        arguments=[
+            "-d",
+            rviz_config_path,
+        ],
         output="screen",
         parameters=[
             {
@@ -235,20 +237,15 @@ def generate_launch_description():
     return LaunchDescription(
         [
             ego_state_publisher,
-
             actor_state_publisher,
-            actor_marker_publisher,
-
             map_server,
-            map_marker_publisher,
-
             ground_truth_trajectory_server,
             navigation_state_publisher,
             ground_truth_future_publisher,
             executed_path_publisher,
-            navigation_marker_publisher,
-
             robot_state_publisher,
+            map_marker_publisher,
             rviz,
+            delayed_dynamic_markers,
         ]
     )

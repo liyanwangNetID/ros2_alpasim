@@ -119,6 +119,16 @@ Visualization Manager:
         All Enabled: true
         base_link:
           Value: true
+        camera_cross_left_120fov_optical:
+          Value: true
+        camera_cross_right_120fov_optical:
+          Value: true
+        camera_front_tele_30fov_optical:
+          Value: true
+        camera_front_wide_120fov_optical:
+          Value: true
+        map:
+          Value: true
         vehicle_body:
           Value: true
         vehicle_cabin:
@@ -137,7 +147,28 @@ Visualization Manager:
       Show Axes: true
       Show Names: false
       Tree:
-        {}
+        map:
+          base_link:
+            camera_cross_left_120fov_optical:
+              {}
+            camera_cross_right_120fov_optical:
+              {}
+            camera_front_tele_30fov_optical:
+              {}
+            camera_front_wide_120fov_optical:
+              {}
+            vehicle_body:
+              {}
+            vehicle_cabin:
+              {}
+            wheel_front_left:
+              {}
+            wheel_front_right:
+              {}
+            wheel_rear_left:
+              {}
+            wheel_rear_right:
+              {}
       Update Interval: 0
       Value: true
     - Class: rviz_default_plugins/Image
@@ -200,7 +231,11 @@ Visualization Manager:
       Enabled: true
       Name: MarkerArray_Traffic
       Namespaces:
-        {}
+        actors/boxes/automobile: true
+        actors/boxes/heavy_truck: true
+        actors/boxes/trailer: true
+        actors/labels: true
+        actors/velocity: true
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -212,7 +247,15 @@ Visualization Manager:
       Enabled: true
       Name: MarkerArray_Map
       Namespaces:
-        {}
+        map/lane_centerlines: true
+        map/lane_left_boundaries: true
+        map/lane_right_boundaries: true
+        map/road_edges: true
+        map/traffic_sign_labels: true
+        map/traffic_signs: true
+        map/wait_lines/stop: true
+        map/wait_lines/unknown: true
+        map/wait_lines/yield: true
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -224,7 +267,10 @@ Visualization Manager:
       Enabled: true
       Name: MarkerArray_Nav
       Namespaces:
-        {}
+        navigation/executed_path: true
+        navigation/ground_truth_future: true
+        navigation/model_plan: true
+        navigation/route: true
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -278,7 +324,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 49.95039367675781
+      Distance: 111.73466491699219
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -293,10 +339,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.00039803981781
+      Pitch: 1.5697963237762451
       Target Frame: base_link
       Value: Orbit (rviz_default_plugins)
-      Yaw: 3.123570680618286
+      Yaw: 3.1435697078704834
     Saved: ~
 Window Geometry:
   Displays:
