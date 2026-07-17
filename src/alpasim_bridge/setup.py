@@ -48,6 +48,26 @@ setup(
             "map_marker_publisher = "
             "alpasim_bridge.map_marker_publisher:main"
         ),
+        (
+            "ground_truth_trajectory_server = "
+            "alpasim_bridge.ground_truth_trajectory_server:main"
+        ),
+        (
+            "navigation_state_publisher = "
+            "alpasim_bridge.navigation_state_publisher:main"
+        ),
+        (
+            "ground_truth_future_publisher = "
+            "alpasim_bridge.ground_truth_future_publisher:main"
+        ),
+        (
+            "executed_path_publisher = "
+            "alpasim_bridge.executed_path_publisher:main"
+        ),
+        (
+            "navigation_marker_publisher = "
+            "alpasim_bridge.navigation_marker_publisher:main"
+        ),
     ],
 },
 

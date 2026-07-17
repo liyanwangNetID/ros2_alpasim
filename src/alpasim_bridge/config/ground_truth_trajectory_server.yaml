@@ -1,0 +1,8 @@
+ground_truth_trajectory_server:
+  ros__parameters:
+    tcp_host: "127.0.0.1"
+    tcp_port: 15004
+
+    service_name: "/alpasim/navigation/get_ground_truth_ego_trajectory"
+
+    default_max_points: 256

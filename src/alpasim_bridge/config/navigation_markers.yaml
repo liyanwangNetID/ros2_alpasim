@@ -1,0 +1,17 @@
+navigation_marker_publisher:
+  ros__parameters:
+    route_topic: "/alpasim/route/map"
+    ground_truth_topic: "/alpasim/ground_truth/ego/future_trajectory"
+    model_plan_topic: "/alpasim/planning/ego/trajectory"
+    executed_path_topic: "/alpasim/ego/executed_path"
+    marker_topic: "/alpasim/navigation/markers"
+
+    route_width: 0.28
+    ground_truth_width: 0.20
+    model_plan_width: 0.26
+    executed_path_width: 0.12
+
+    route_z_offset: 0.16
+    ground_truth_z_offset: 0.20
+    model_plan_z_offset: 0.24
+    executed_path_z_offset: 0.12

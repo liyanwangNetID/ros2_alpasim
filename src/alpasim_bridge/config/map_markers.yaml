@@ -13,7 +13,7 @@ alpasim_map_marker_publisher:
     # 44 traffic-sign labels can be visually noisy.
     show_traffic_sign_labels: true
 
-    lane_centerline_width: 0.10
+    lane_centerline_width: 0.02
     lane_boundary_width: 0.06
     road_edge_width: 0.12
     wait_line_width: 0.20

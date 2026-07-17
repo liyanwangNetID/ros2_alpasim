@@ -1,0 +1,12 @@
+navigation_state_publisher:
+  ros__parameters:
+    navigation_tcp_host: "127.0.0.1"
+    navigation_tcp_port: 15005
+
+    route_map_topic: "/alpasim/route/map"
+    route_model_input_topic: "/alpasim/route/model_input"
+    planned_trajectory_topic: "/alpasim/planning/ego/trajectory"
+
+    publish_route_map: true
+    publish_route_model_input: true
+    publish_planned_trajectory: true

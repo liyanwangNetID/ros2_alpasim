@@ -1,0 +1,28 @@
+# Simulation time t0.
+builtin_interfaces/Time reference_stamp
+
+# Requested future window starting at t0.
+builtin_interfaces/Duration future_duration
+
+# Requested output point spacing.
+# Zero means use native recording timestamps.
+builtin_interfaces/Duration sampling_interval
+
+# Hard safety limit.
+# Zero means server default.
+uint32 max_points
+
+# Client's cached source revision.
+uint64 known_revision
+---
+bool success
+bool not_modified
+string message
+
+uint64 revision
+
+# Valid time range of the complete cached recording.
+builtin_interfaces/Time recording_start_stamp
+builtin_interfaces/Time recording_end_stamp
+
+alpasim_msgs/EgoTrajectory trajectory

@@ -1,0 +1,10 @@
+ground_truth_future_publisher:
+  ros__parameters:
+    service_name: "/alpasim/navigation/get_ground_truth_ego_trajectory"
+    output_topic: "/alpasim/ground_truth/ego/future_trajectory"
+    clock_topic: "/clock"
+
+    future_duration_sec: 6.4
+    sampling_interval_sec: 0.1
+    max_points: 65
+    publish_rate_hz: 2.0

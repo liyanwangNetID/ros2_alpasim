@@ -21,7 +21,12 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/MapWaitLine.msg"
   "msg/VectorMap.msg"
 
+  "msg/Route.msg"
+  "msg/RoutePoint.msg"
+  "msg/EgoTrajectory.msg"
+
   "srv/GetVectorMap.srv"
+  "srv/GetGroundTruthEgoTrajectory.srv"
 
   DEPENDENCIES
     builtin_interfaces

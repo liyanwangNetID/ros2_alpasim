@@ -1,0 +1,11 @@
+executed_path_publisher:
+  ros__parameters:
+    input_topic: "/alpasim/ego_state"
+    output_topic: "/alpasim/ego/executed_path"
+
+    # 0.0 means keep the entire current rollout.
+    history_duration_sec: 0.0
+
+    sampling_interval_sec: 0.1
+    maximum_points: 512
+    publish_rate_hz: 5.0
