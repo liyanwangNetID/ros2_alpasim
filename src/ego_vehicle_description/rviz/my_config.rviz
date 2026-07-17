@@ -9,7 +9,7 @@ Panels:
         - /Image_Front1/Topic1
         - /Image_Right1/Topic1
         - /Image_Tele1/Topic1
-      Splitter Ratio: 0.5
+      Splitter Ratio: 0.6205882430076599
     Tree Height: 375
   - Class: rviz_common/Selection
     Name: Selection
@@ -119,16 +119,6 @@ Visualization Manager:
         All Enabled: true
         base_link:
           Value: true
-        camera_cross_left_120fov_optical:
-          Value: true
-        camera_cross_right_120fov_optical:
-          Value: true
-        camera_front_tele_30fov_optical:
-          Value: true
-        camera_front_wide_120fov_optical:
-          Value: true
-        map:
-          Value: true
         vehicle_body:
           Value: true
         vehicle_cabin:
@@ -147,28 +137,7 @@ Visualization Manager:
       Show Axes: true
       Show Names: false
       Tree:
-        map:
-          base_link:
-            camera_cross_left_120fov_optical:
-              {}
-            camera_cross_right_120fov_optical:
-              {}
-            camera_front_tele_30fov_optical:
-              {}
-            camera_front_wide_120fov_optical:
-              {}
-            vehicle_body:
-              {}
-            vehicle_cabin:
-              {}
-            wheel_front_left:
-              {}
-            wheel_front_right:
-              {}
-            wheel_rear_left:
-              {}
-            wheel_rear_right:
-              {}
+        {}
       Update Interval: 0
       Value: true
     - Class: rviz_default_plugins/Image
@@ -229,19 +198,27 @@ Visualization Manager:
       Value: true
     - Class: rviz_default_plugins/MarkerArray
       Enabled: true
-      Name: MarkerArray
+      Name: MarkerArray_Traffic
       Namespaces:
-        actors/boxes/automobile: true
-        actors/boxes/heavy_truck: true
-        actors/boxes/trailer: true
-        actors/labels: true
-        actors/velocity: true
+        {}
       Topic:
         Depth: 5
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /alpasim/actors/markers
+      Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: MarkerArray_Map
+      Namespaces:
+        {}
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /alpasim/map/markers
       Value: true
   Enabled: true
   Global Options:

@@ -40,6 +40,14 @@ setup(
             "actor_marker_publisher = "
             "alpasim_bridge.actor_marker_publisher:main"
         ),
+        (
+            "map_server = "
+            "alpasim_bridge.map_server:main"
+        ),
+        (
+            "map_marker_publisher = "
+            "alpasim_bridge.map_marker_publisher:main"
+        ),
     ],
 },
 

@@ -37,6 +37,18 @@ def generate_launch_description():
         / "actor_export.yaml"
     )
 
+    map_server_config_path = (
+        bridge_share
+        / "config"
+        / "map_server.yaml"
+    )
+
+    map_marker_config_path = (
+        bridge_share
+        / "config"
+        / "map_markers.yaml"
+    )
+
 
     robot_description = urdf_path.read_text(encoding="utf-8")
 
@@ -59,6 +71,29 @@ def generate_launch_description():
         output="screen",
         parameters=[
             str(actor_config_path),
+        ],
+    )
+
+    map_server = Node(
+        package="alpasim_bridge",
+        executable="map_server",
+        name="alpasim_map_server",
+        output="screen",
+        parameters=[
+            str(map_server_config_path),
+        ],
+    )
+
+    map_marker_publisher = Node(
+        package="alpasim_bridge",
+        executable="map_marker_publisher",
+        name="alpasim_map_marker_publisher",
+        output="screen",
+        parameters=[
+            str(map_marker_config_path),
+            {
+                "use_sim_time": True,
+            },
         ],
     )
 
@@ -107,6 +142,8 @@ def generate_launch_description():
             ego_state_publisher,
             actor_state_publisher,
             actor_marker_publisher,
+            map_server,
+            map_marker_publisher,
             robot_state_publisher,
             rviz,
         ]

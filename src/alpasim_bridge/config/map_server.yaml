@@ -1,0 +1,5 @@
+alpasim_map_server:
+  ros__parameters:
+    map_tcp_host: "127.0.0.1"
+    map_tcp_port: 15003
+    service_name: "/alpasim/map/get_vector_map"

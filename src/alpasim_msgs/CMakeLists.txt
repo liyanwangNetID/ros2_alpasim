@@ -13,6 +13,16 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/TrajectoryPoint.msg"
   "msg/ActorTrajectory.msg"
   "msg/ActorTrajectoryArray.msg"
+
+  "msg/MapPolyline.msg"
+  "msg/MapLane.msg"
+  "msg/MapRoadEdge.msg"
+  "msg/MapTrafficSign.msg"
+  "msg/MapWaitLine.msg"
+  "msg/VectorMap.msg"
+
+  "srv/GetVectorMap.srv"
+
   DEPENDENCIES
     builtin_interfaces
     geometry_msgs

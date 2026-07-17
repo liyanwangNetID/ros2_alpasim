@@ -1,0 +1,22 @@
+alpasim_map_marker_publisher:
+  ros__parameters:
+    service_name: "/alpasim/map/get_vector_map"
+    marker_topic: "/alpasim/map/markers"
+    request_period_sec: 1.0
+
+    show_lane_centerlines: true
+    show_lane_boundaries: true
+    show_road_edges: true
+    show_wait_lines: true
+    show_traffic_signs: true
+
+    # 44 traffic-sign labels can be visually noisy.
+    show_traffic_sign_labels: true
+
+    lane_centerline_width: 0.10
+    lane_boundary_width: 0.06
+    road_edge_width: 0.12
+    wait_line_width: 0.20
+
+    # Raise lines slightly to avoid z-fighting with the ground.
+    visualization_z_offset: 0.04
