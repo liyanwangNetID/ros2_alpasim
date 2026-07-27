@@ -2,7 +2,7 @@ navigation_marker_publisher:
   ros__parameters:
     route_topic: "/alpasim/route/map"
     ground_truth_topic: "/alpasim/ground_truth/ego/future_trajectory"
-    model_plan_topic: "/alpasim/planning/ego/trajectory"
+    model_plan_topic: "/planning/ego/trajectory"
     executed_path_topic: "/alpasim/ego/executed_path"
     marker_topic: "/alpasim/navigation/markers"
 

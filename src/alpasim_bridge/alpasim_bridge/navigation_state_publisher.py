@@ -23,10 +23,10 @@ from rclpy.qos import (
 )
 
 from alpasim_msgs.msg import (
-    EgoTrajectory,
+    # EgoTrajectory,
     Route,
     RoutePoint,
-    TrajectoryPoint,
+    # TrajectoryPoint,
 )
 
 
@@ -62,21 +62,21 @@ def time_from_microseconds(value: int) -> Time:
     return message
 
 
-def duration_from_microseconds(
-    value: int,
-) -> Duration:
-    """Convert signed microseconds to a normalized ROS Duration."""
-    message = Duration()
+# def duration_from_microseconds(
+#     value: int,
+# ) -> Duration:
+#     """Convert signed microseconds to a normalized ROS Duration."""
+#     message = Duration()
 
-    seconds = value // 1_000_000
-    remaining_us = value - seconds * 1_000_000
+#     seconds = value // 1_000_000
+#     remaining_us = value - seconds * 1_000_000
 
-    message.sec = int(seconds)
-    message.nanosec = int(
-        remaining_us * 1000
-    )
+#     message.sec = int(seconds)
+#     message.nanosec = int(
+#         remaining_us * 1000
+#     )
 
-    return message
+#     return message
 
 
 def require_finite(
@@ -114,19 +114,19 @@ def route_generator_value(
     return Route.GENERATOR_UNKNOWN
 
 
-def trajectory_source_value(
-    source_name: str,
-) -> int:
-    """Convert Runtime plan source text to EgoTrajectory constants."""
-    normalized = str(source_name).upper()
+# def trajectory_source_value(
+#     source_name: str,
+# ) -> int:
+#     """Convert Runtime plan source text to EgoTrajectory constants."""
+#     normalized = str(source_name).upper()
 
-    if normalized == "MODEL_PLANNING":
-        return EgoTrajectory.SOURCE_MODEL_PLANNING
+#     if normalized == "MODEL_PLANNING":
+#         return EgoTrajectory.SOURCE_MODEL_PLANNING
 
-    if normalized == "CONTROLLER_REFERENCE":
-        return EgoTrajectory.SOURCE_CONTROLLER_REFERENCE
+#     if normalized == "CONTROLLER_REFERENCE":
+#         return EgoTrajectory.SOURCE_CONTROLLER_REFERENCE
 
-    return EgoTrajectory.SOURCE_UNKNOWN
+#     return EgoTrajectory.SOURCE_UNKNOWN
 
 
 def make_route_point(
@@ -222,222 +222,222 @@ def make_route(
     return message
 
 
-def populate_pose(
-    message_pose,
-    source: dict[str, Any],
-) -> None:
-    """Populate a geometry_msgs/Pose from Runtime trajectory JSON."""
-    position = source["position"]
-    orientation = source["orientation"]
+# def populate_pose(
+#     message_pose,
+#     source: dict[str, Any],
+# ) -> None:
+#     """Populate a geometry_msgs/Pose from Runtime trajectory JSON."""
+#     position = source["position"]
+#     orientation = source["orientation"]
 
-    message_pose.position.x = require_finite(
-        position["x"],
-        "trajectory.position.x",
-    )
-    message_pose.position.y = require_finite(
-        position["y"],
-        "trajectory.position.y",
-    )
-    message_pose.position.z = require_finite(
-        position["z"],
-        "trajectory.position.z",
-    )
+#     message_pose.position.x = require_finite(
+#         position["x"],
+#         "trajectory.position.x",
+#     )
+#     message_pose.position.y = require_finite(
+#         position["y"],
+#         "trajectory.position.y",
+#     )
+#     message_pose.position.z = require_finite(
+#         position["z"],
+#         "trajectory.position.z",
+#     )
 
-    message_pose.orientation.x = require_finite(
-        orientation["x"],
-        "trajectory.orientation.x",
-    )
-    message_pose.orientation.y = require_finite(
-        orientation["y"],
-        "trajectory.orientation.y",
-    )
-    message_pose.orientation.z = require_finite(
-        orientation["z"],
-        "trajectory.orientation.z",
-    )
-    message_pose.orientation.w = require_finite(
-        orientation["w"],
-        "trajectory.orientation.w",
-    )
-
-
-def populate_vector3(
-    message_vector,
-    source: dict[str, Any],
-    field_name: str,
-) -> None:
-    """Populate geometry_msgs/Vector3 from Runtime JSON."""
-    message_vector.x = require_finite(
-        source["x"],
-        f"{field_name}.x",
-    )
-    message_vector.y = require_finite(
-        source["y"],
-        f"{field_name}.y",
-    )
-    message_vector.z = require_finite(
-        source["z"],
-        f"{field_name}.z",
-    )
+#     message_pose.orientation.x = require_finite(
+#         orientation["x"],
+#         "trajectory.orientation.x",
+#     )
+#     message_pose.orientation.y = require_finite(
+#         orientation["y"],
+#         "trajectory.orientation.y",
+#     )
+#     message_pose.orientation.z = require_finite(
+#         orientation["z"],
+#         "trajectory.orientation.z",
+#     )
+#     message_pose.orientation.w = require_finite(
+#         orientation["w"],
+#         "trajectory.orientation.w",
+#     )
 
 
-def make_trajectory_point(
-    source: dict[str, Any],
-    reference_timestamp_us: int,
-) -> TrajectoryPoint:
-    """Convert one Runtime trajectory sample to TrajectoryPoint."""
-    message = TrajectoryPoint()
-
-    timestamp_us = int(source["timestamp_us"])
-
-    message.stamp = time_from_microseconds(
-        timestamp_us
-    )
-    message.time_from_reference = (
-        duration_from_microseconds(
-            timestamp_us - reference_timestamp_us
-        )
-    )
-
-    populate_pose(
-        message.pose,
-        source,
-    )
-
-    populate_vector3(
-        message.linear_velocity,
-        source["linear_velocity"],
-        "linear_velocity",
-    )
-
-    populate_vector3(
-        message.linear_acceleration,
-        source["linear_acceleration"],
-        "linear_acceleration",
-    )
-
-    message.yaw = require_finite(
-        source["yaw"],
-        "trajectory.yaw",
-    )
-    message.yaw_rate = require_finite(
-        source["yaw_rate"],
-        "trajectory.yaw_rate",
-    )
-    message.yaw_acceleration = require_finite(
-        source["yaw_acceleration"],
-        "trajectory.yaw_acceleration",
-    )
-    message.speed = require_finite(
-        source["speed"],
-        "trajectory.speed",
-    )
-
-    return message
+# def populate_vector3(
+#     message_vector,
+#     source: dict[str, Any],
+#     field_name: str,
+# ) -> None:
+#     """Populate geometry_msgs/Vector3 from Runtime JSON."""
+#     message_vector.x = require_finite(
+#         source["x"],
+#         f"{field_name}.x",
+#     )
+#     message_vector.y = require_finite(
+#         source["y"],
+#         f"{field_name}.y",
+#     )
+#     message_vector.z = require_finite(
+#         source["z"],
+#         f"{field_name}.z",
+#     )
 
 
-def make_planned_trajectory(
-    source: dict[str, Any],
-    *,
-    reference_timestamp_us: int,
-    force_gt_active: bool,
-) -> EgoTrajectory:
-    """Convert Runtime planned/controller trajectory to EgoTrajectory."""
-    message = EgoTrajectory()
+# def make_trajectory_point(
+#     source: dict[str, Any],
+#     reference_timestamp_us: int,
+# ) -> TrajectoryPoint:
+#     """Convert one Runtime trajectory sample to TrajectoryPoint."""
+#     message = TrajectoryPoint()
 
-    message.reference_stamp = time_from_microseconds(
-        reference_timestamp_us
-    )
+#     timestamp_us = int(source["timestamp_us"])
 
-    message.pose_frame_id = str(
-        source.get("pose_frame_id", "map")
-    )
-    message.dynamics_frame_id = str(
-        source.get("dynamics_frame_id", "map")
-    )
+#     message.stamp = time_from_microseconds(
+#         timestamp_us
+#     )
+#     message.time_from_reference = (
+#         duration_from_microseconds(
+#             timestamp_us - reference_timestamp_us
+#         )
+#     )
 
-    source_name = str(
-        source.get("source", "UNKNOWN")
-    )
+#     populate_pose(
+#         message.pose,
+#         source,
+#     )
 
-    message.source = trajectory_source_value(
-        source_name
-    )
-    message.producer = str(
-        source.get("producer", "unknown")
-    )
-    message.is_model_generated = bool(
-        source.get("is_model_generated", False)
-    )
-    message.force_gt_active = bool(
-        force_gt_active
-    )
+#     populate_vector3(
+#         message.linear_velocity,
+#         source["linear_velocity"],
+#         "linear_velocity",
+#     )
 
-    start_timestamp_us = int(
-        source.get(
-            "start_timestamp_us",
-            reference_timestamp_us,
-        )
-    )
-    end_timestamp_us = int(
-        source.get(
-            "end_timestamp_us",
-            start_timestamp_us,
-        )
-    )
+#     populate_vector3(
+#         message.linear_acceleration,
+#         source["linear_acceleration"],
+#         "linear_acceleration",
+#     )
 
-    if end_timestamp_us < start_timestamp_us:
-        raise ValueError(
-            "Planned trajectory end timestamp precedes start: "
-            f"{end_timestamp_us} < {start_timestamp_us}"
-        )
+#     message.yaw = require_finite(
+#         source["yaw"],
+#         "trajectory.yaw",
+#     )
+#     message.yaw_rate = require_finite(
+#         source["yaw_rate"],
+#         "trajectory.yaw_rate",
+#     )
+#     message.yaw_acceleration = require_finite(
+#         source["yaw_acceleration"],
+#         "trajectory.yaw_acceleration",
+#     )
+#     message.speed = require_finite(
+#         source["speed"],
+#         "trajectory.speed",
+#     )
 
-    requested_duration_us = max(
-        0,
-        end_timestamp_us - reference_timestamp_us,
-    )
-    actual_duration_us = max(
-        0,
-        end_timestamp_us - start_timestamp_us,
-    )
+#     return message
 
-    message.requested_duration = (
-        duration_from_microseconds(
-            requested_duration_us
-        )
-    )
-    message.actual_duration = (
-        duration_from_microseconds(
-            actual_duration_us
-        )
-    )
 
-    message.points = [
-        make_trajectory_point(
-            point,
-            reference_timestamp_us,
-        )
-        for point in source.get("points", [])
-    ]
+# def make_planned_trajectory(
+#     source: dict[str, Any],
+#     *,
+#     reference_timestamp_us: int,
+#     force_gt_active: bool,
+# ) -> EgoTrajectory:
+#     """Convert Runtime planned/controller trajectory to EgoTrajectory."""
+#     message = EgoTrajectory()
 
-    # Runtime serializer requires strictly increasing timestamps.
-    previous_timestamp_us: int | None = None
+#     message.reference_stamp = time_from_microseconds(
+#         reference_timestamp_us
+#     )
 
-    for point in source.get("points", []):
-        timestamp_us = int(point["timestamp_us"])
+#     message.pose_frame_id = str(
+#         source.get("pose_frame_id", "map")
+#     )
+#     message.dynamics_frame_id = str(
+#         source.get("dynamics_frame_id", "map")
+#     )
 
-        if (
-            previous_timestamp_us is not None
-            and timestamp_us <= previous_timestamp_us
-        ):
-            raise ValueError(
-                "Planned trajectory timestamps are not "
-                "strictly increasing"
-            )
+#     source_name = str(
+#         source.get("source", "UNKNOWN")
+#     )
 
-        previous_timestamp_us = timestamp_us
+#     message.source = trajectory_source_value(
+#         source_name
+#     )
+#     message.producer = str(
+#         source.get("producer", "unknown")
+#     )
+#     message.is_model_generated = bool(
+#         source.get("is_model_generated", False)
+#     )
+#     message.force_gt_active = bool(
+#         force_gt_active
+#     )
 
-    return message
+#     start_timestamp_us = int(
+#         source.get(
+#             "start_timestamp_us",
+#             reference_timestamp_us,
+#         )
+#     )
+#     end_timestamp_us = int(
+#         source.get(
+#             "end_timestamp_us",
+#             start_timestamp_us,
+#         )
+#     )
+
+#     if end_timestamp_us < start_timestamp_us:
+#         raise ValueError(
+#             "Planned trajectory end timestamp precedes start: "
+#             f"{end_timestamp_us} < {start_timestamp_us}"
+#         )
+
+#     requested_duration_us = max(
+#         0,
+#         end_timestamp_us - reference_timestamp_us,
+#     )
+#     actual_duration_us = max(
+#         0,
+#         end_timestamp_us - start_timestamp_us,
+#     )
+
+#     message.requested_duration = (
+#         duration_from_microseconds(
+#             requested_duration_us
+#         )
+#     )
+#     message.actual_duration = (
+#         duration_from_microseconds(
+#             actual_duration_us
+#         )
+#     )
+
+#     message.points = [
+#         make_trajectory_point(
+#             point,
+#             reference_timestamp_us,
+#         )
+#         for point in source.get("points", [])
+#     ]
+
+#     # Runtime serializer requires strictly increasing timestamps.
+#     previous_timestamp_us: int | None = None
+
+#     for point in source.get("points", []):
+#         timestamp_us = int(point["timestamp_us"])
+
+#         if (
+#             previous_timestamp_us is not None
+#             and timestamp_us <= previous_timestamp_us
+#         ):
+#             raise ValueError(
+#                 "Planned trajectory timestamps are not "
+#                 "strictly increasing"
+#             )
+
+#         previous_timestamp_us = timestamp_us
+
+#     return message
 
 
 class NavigationStatePublisher(Node):
@@ -465,10 +465,10 @@ class NavigationStatePublisher(Node):
             "route_model_input_topic",
             "/alpasim/route/model_input",
         )
-        self.declare_parameter(
-            "planned_trajectory_topic",
-            "/alpasim/planning/ego/trajectory",
-        )
+        # self.declare_parameter(
+        #     "planned_trajectory_topic",
+        #     "/alpasim/planning/ego/trajectory",
+        # )
 
         self.declare_parameter(
             "publish_route_map",
@@ -478,10 +478,10 @@ class NavigationStatePublisher(Node):
             "publish_route_model_input",
             True,
         )
-        self.declare_parameter(
-            "publish_planned_trajectory",
-            True,
-        )
+        # self.declare_parameter(
+        #     "publish_planned_trajectory",
+        #     True,
+        # )
 
         self.navigation_tcp_host = str(
             self.get_parameter(
@@ -504,11 +504,11 @@ class NavigationStatePublisher(Node):
                 "route_model_input_topic"
             ).value
         )
-        planned_trajectory_topic = str(
-            self.get_parameter(
-                "planned_trajectory_topic"
-            ).value
-        )
+        # planned_trajectory_topic = str(
+        #     self.get_parameter(
+        #         "planned_trajectory_topic"
+        #     ).value
+        # )
 
         self.publish_route_map_enabled = bool(
             self.get_parameter(
@@ -520,11 +520,11 @@ class NavigationStatePublisher(Node):
                 "publish_route_model_input"
             ).value
         )
-        self.publish_planned_trajectory_enabled = bool(
-            self.get_parameter(
-                "publish_planned_trajectory"
-            ).value
-        )
+        # self.publish_planned_trajectory_enabled = bool(
+        #     self.get_parameter(
+        #         "publish_planned_trajectory"
+        #     ).value
+        # )
 
         navigation_qos = QoSProfile(
             reliability=ReliabilityPolicy.RELIABLE,
@@ -547,13 +547,13 @@ class NavigationStatePublisher(Node):
             )
         )
 
-        self.planned_trajectory_publisher = (
-            self.create_publisher(
-                EgoTrajectory,
-                planned_trajectory_topic,
-                navigation_qos,
-            )
-        )
+        # self.planned_trajectory_publisher = (
+        #     self.create_publisher(
+        #         EgoTrajectory,
+        #         planned_trajectory_topic,
+        #         navigation_qos,
+        #     )
+        # )
 
         self.packet_queue: queue.Queue[
             dict[str, Any]
@@ -607,10 +607,10 @@ class NavigationStatePublisher(Node):
             "Route model-input topic: "
             f"{route_model_input_topic}"
         )
-        self.get_logger().info(
-            "Planned trajectory topic: "
-            f"{planned_trajectory_topic}"
-        )
+        # self.get_logger().info(
+        #     "Planned trajectory topic: "
+        #     f"{planned_trajectory_topic}"
+        # )
 
     def navigation_tcp_server_loop(self) -> None:
         """Accept Runtime connections and receive navigation packets."""
@@ -764,7 +764,7 @@ class NavigationStatePublisher(Node):
         )
 
         published_route_points = 0
-        planned_point_count = 0
+        # planned_point_count = 0
 
         route_map_source = packet.get("route_map")
 
@@ -830,43 +830,43 @@ class NavigationStatePublisher(Node):
                 route_model_input
             )
 
-        planned_source = packet.get(
-            "planned_trajectory"
-        )
+        # planned_source = packet.get(
+        #     "planned_trajectory"
+        # )
 
-        if (
-            self.publish_planned_trajectory_enabled
-            and planned_source is not None
-        ):
-            planned_trajectory = (
-                make_planned_trajectory(
-                    planned_source,
-                    reference_timestamp_us=(
-                        reference_timestamp_us
-                    ),
-                    force_gt_active=(
-                        force_gt_active
-                    ),
-                )
-            )
+        # if (
+        #     self.publish_planned_trajectory_enabled
+        #     and planned_source is not None
+        # ):
+        #     planned_trajectory = (
+        #         make_planned_trajectory(
+        #             planned_source,
+        #             reference_timestamp_us=(
+        #                 reference_timestamp_us
+        #             ),
+        #             force_gt_active=(
+        #                 force_gt_active
+        #             ),
+        #         )
+        #     )
 
-            if (
-                planned_trajectory.pose_frame_id
-                != "map"
-            ):
-                raise ValueError(
-                    "planned trajectory must be expressed "
-                    "in map, got "
-                    f"{planned_trajectory.pose_frame_id!r}"
-                )
+        #     if (
+        #         planned_trajectory.pose_frame_id
+        #         != "map"
+        #     ):
+        #         raise ValueError(
+        #             "planned trajectory must be expressed "
+        #             "in map, got "
+        #             f"{planned_trajectory.pose_frame_id!r}"
+        #         )
 
-            self.planned_trajectory_publisher.publish(
-                planned_trajectory
-            )
+        #     self.planned_trajectory_publisher.publish(
+        #         planned_trajectory
+        #     )
 
-            planned_point_count = len(
-                planned_trajectory.points
-            )
+        #     planned_point_count = len(
+        #         planned_trajectory.points
+        #     )
 
         self.last_sequence = sequence
         self.last_reference_timestamp_us = (
@@ -882,7 +882,7 @@ class NavigationStatePublisher(Node):
                 f"{reference_timestamp_us / 1e6:.6f}s, "
                 f"route_generator={generator_type}, "
                 f"route_points={published_route_points}, "
-                f"planned_points={planned_point_count}, "
+                # f"planned_points={planned_point_count}, "
                 f"force_gt_active={force_gt_active}"
             )
 
