@@ -1,0 +1,15 @@
+vavam_trajectory_planner:
+  ros__parameters:
+    checkpoint_path: "/home/lab/alpasim_ros2_ws/models/vavam/VAM_width_1024_pretrained_139k.pt"
+    tokenizer_path: "/home/lab/alpasim_ros2_ws/models/vavam/VQ_ds16_16384_llamagen_encoder.jit"
+    device: "cuda"
+
+    camera_topic: "/alpasim/camera/front_wide/image/compressed"
+    calibration_topic: "/alpasim/camera/front_wide/calibration"
+    route_topic: "/alpasim/route/model_input"
+    output_topic: "/alpasim/planning/ego/trajectory"
+
+    inference_rate_hz: 2.0
+
+    command_distance_threshold_m: 3.0
+    minimum_lookahead_distance_m: 20.0

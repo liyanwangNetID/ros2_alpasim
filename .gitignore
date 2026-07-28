@@ -2,6 +2,7 @@
 build/
 install/
 log/
+models/
 
 # 忽略 Python 快取
 __pycache__/
