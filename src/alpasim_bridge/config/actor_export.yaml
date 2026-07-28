@@ -1,7 +1,7 @@
 actor_state_publisher:
   ros__parameters:
 
-    actor_tcp_host: "127.0.0.1"
+    actor_tcp_host: "0.0.0.0"
     actor_tcp_port: 15002
 
     # History window maintained by ROS bridge.

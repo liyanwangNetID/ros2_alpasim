@@ -1,0 +1,7 @@
+alpasim_sensor_publisher:
+  ros__parameters:
+    ego_udp_host: "0.0.0.0"
+    ego_udp_port: 15000
+
+    camera_tcp_host: "0.0.0.0"
+    camera_tcp_port: 15001

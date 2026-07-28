@@ -19,6 +19,11 @@ def generate_launch_description():
         )
     )
 
+    ego_sensor_config_path = (
+        bridge_share
+        / "config"
+        / "ego_sensor.yaml"
+    )
     actor_marker_config_path = (
         bridge_share
         / "config"
@@ -85,6 +90,9 @@ def generate_launch_description():
         executable="ego_state_publisher",
         name="alpasim_sensor_publisher",
         output="screen",
+        parameters=[
+            str(ego_sensor_config_path),
+        ],
     )
 
     actor_state_publisher = Node(
