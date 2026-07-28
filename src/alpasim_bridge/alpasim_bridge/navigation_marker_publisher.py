@@ -49,7 +49,7 @@ class NavigationMarkerPublisher(Node):
         )
         self.declare_parameter(
             "model_plan_topic",
-            "/planning/ego/trajectory",
+            "/alpasim/planning/ego/trajectory",
         )
         self.declare_parameter(
             "executed_path_topic",
