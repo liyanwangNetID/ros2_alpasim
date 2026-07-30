@@ -183,7 +183,7 @@ Visualization Manager:
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /alpasim/camera/front_wide/image/compressed
+        Value: /alpasim/camera/front_wide/image
       Value: true
     - Class: rviz_default_plugins/Image
       Enabled: true
@@ -197,7 +197,7 @@ Visualization Manager:
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /alpasim/camera/cross_left/image/compressed
+        Value: /alpasim/camera/cross_left/image
       Value: true
     - Class: rviz_default_plugins/Image
       Enabled: true
@@ -211,7 +211,7 @@ Visualization Manager:
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /alpasim/camera/cross_right/image/compressed
+        Value: /alpasim/camera/cross_right/image
       Value: true
     - Class: rviz_default_plugins/Image
       Enabled: true
@@ -225,7 +225,7 @@ Visualization Manager:
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /alpasim/camera/front_tele/image/compressed
+        Value: /alpasim/camera/front_tele/image
       Value: true
     - Class: rviz_default_plugins/MarkerArray
       Enabled: true

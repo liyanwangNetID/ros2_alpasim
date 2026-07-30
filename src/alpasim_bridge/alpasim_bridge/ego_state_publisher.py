@@ -7,7 +7,11 @@ import queue
 import socket
 import struct
 import threading
+from io import BytesIO
 from typing import Any
+
+import numpy as np
+from PIL import Image as PILImage
 
 import rclpy
 from rclpy.node import Node
@@ -19,7 +23,7 @@ from rclpy.qos import (
 )
 
 from alpasim_msgs.msg import EgoState
-from sensor_msgs.msg import CompressedImage
+from sensor_msgs.msg import Image
 
 from std_msgs.msg import String
 
@@ -47,19 +51,19 @@ CAMERA_FRAME_IDS = {
 
 CAMERA_TOPICS = {
     "camera_cross_left_120fov":
-        "/alpasim/camera/cross_left/image/compressed",
+        "/alpasim/camera/cross_left/image",
 
     "camera_front_wide_120fov":
-        "/alpasim/camera/front_wide/image/compressed",
+        "/alpasim/camera/front_wide/image",
 
     "camera_front_tele_30fov":
-        "/alpasim/camera/front_tele/image/compressed",
+        "/alpasim/camera/front_tele/image",
 
     "camera_cross_right_120fov":
-        "/alpasim/camera/cross_right/image/compressed",
+        "/alpasim/camera/cross_right/image",
 
     "camera_rear_left_70fov":
-        "/alpasim/camera/rear/image/compressed",
+        "/alpasim/camera/rear/image",
 }
 
 CAMERA_CALIBRATION_TOPICS = {
@@ -88,18 +92,18 @@ def first_present(mapping, names):
         f"None of the keys {names} were found in {mapping.keys()}"
     )
 
-def detect_image_format(data: bytes) -> str:
-    """Infer common encoded image formats from file magic bytes."""
-    if data.startswith(b"\xff\xd8\xff"):
-        return "jpeg"
+# def detect_image_format(data: bytes) -> str:
+#     """Infer common encoded image formats from file magic bytes."""
+#     if data.startswith(b"\xff\xd8\xff"):
+#         return "jpeg"
 
-    if data.startswith(b"\x89PNG\r\n\x1a\n"):
-        return "png"
+#     if data.startswith(b"\x89PNG\r\n\x1a\n"):
+#         return "png"
 
-    if data.startswith(b"RIFF") and data[8:12] == b"WEBP":
-        return "webp"
+#     if data.startswith(b"RIFF") and data[8:12] == b"WEBP":
+#         return "webp"
 
-    return "unknown"
+#     return "unknown"
 
 
 def read_exact(sock: socket.socket, size: int) -> bytes:
@@ -168,7 +172,7 @@ class EgoStatePublisher(Node):
 
         self.camera_publishers = {
             logical_id: self.create_publisher(
-                CompressedImage,
+                Image,
                 topic,
                 camera_qos,
             )
@@ -616,15 +620,55 @@ class EgoStatePublisher(Node):
 
         timestamp_us = int(header["end_timestamp_us"])
 
-        msg = CompressedImage()
-        msg.header.stamp.sec = timestamp_us // 1_000_000
+        try:
+            with PILImage.open(
+                BytesIO(image_bytes)
+            ) as encoded_image:
+                image_rgb = np.asarray(
+                    encoded_image.convert("RGB"),
+                    dtype=np.uint8,
+                )
+        except Exception as exc:
+            self.get_logger().error(
+                f"Could not decode {logical_id} image: "
+                f"{type(exc).__name__}: {exc}"
+            )
+            return
+
+        image_rgb = np.ascontiguousarray(image_rgb)
+
+        if (
+            image_rgb.ndim != 3
+            or image_rgb.shape[2] != 3
+        ):
+            self.get_logger().error(
+                f"Unexpected decoded image shape for "
+                f"{logical_id}: {image_rgb.shape}"
+            )
+            return
+
+        height = int(image_rgb.shape[0])
+        width = int(image_rgb.shape[1])
+
+        msg = Image()
+
+        msg.header.stamp.sec = (
+            timestamp_us // 1_000_000
+        )
         msg.header.stamp.nanosec = (
             timestamp_us % 1_000_000
         ) * 1000
 
-        msg.header.frame_id = CAMERA_FRAME_IDS[logical_id]
-        msg.format = detect_image_format(image_bytes)
-        msg.data = image_bytes
+        msg.header.frame_id = (
+            CAMERA_FRAME_IDS[logical_id]
+        )
+
+        msg.height = height
+        msg.width = width
+        msg.encoding = "rgb8"
+        msg.is_bigendian = False
+        msg.step = width * 3
+        msg.data = image_rgb.tobytes()
 
         publisher.publish(msg)
 
@@ -633,9 +677,11 @@ class EgoStatePublisher(Node):
 
         if count == 1:
             self.get_logger().info(
-                f"First {logical_id} frame: "
-                f"format={msg.format}, "
-                f"bytes={len(image_bytes)}, "
+                f"First raw {logical_id} frame: "
+                f"encoding={msg.encoding}, "
+                f"resolution={width}x{height}, "
+                f"step={msg.step}, "
+                f"bytes={len(msg.data)}, "
                 f"t={timestamp_us / 1e6:.6f}s"
             )
 

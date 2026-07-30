@@ -4,12 +4,14 @@ vavam_trajectory_planner:
     tokenizer_path: "/home/lab/alpasim_ros2_ws/models/vavam/VQ_ds16_16384_llamagen_encoder.jit"
     device: "cuda"
 
-    camera_topic: "/alpasim/camera/front_wide/image/compressed"
+    camera_topic: "/alpasim/camera/front_wide/image"
     calibration_topic: "/alpasim/camera/front_wide/calibration"
     route_topic: "/alpasim/route/model_input"
     output_topic: "/alpasim/planning/ego/trajectory"
 
     inference_rate_hz: 2.0
+    context_length: 1
+    maximum_frame_gap_s: 0.25
 
     command_distance_threshold_m: 3.0
     minimum_lookahead_distance_m: 20.0

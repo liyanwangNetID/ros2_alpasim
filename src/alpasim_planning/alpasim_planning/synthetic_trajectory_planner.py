@@ -28,9 +28,9 @@ class SyntheticTrajectoryPlanner(Node):
             "output_topic",
             "/alpasim/planning/ego/trajectory",
         )
-        self.declare_parameter("publish_rate_hz", 10.0)
+        self.declare_parameter("publish_rate_hz", 2.0)
         self.declare_parameter("horizon_sec", 4.0)
-        self.declare_parameter("sample_period_sec", 0.1)
+        self.declare_parameter("sample_period_sec", 0.5)
         self.declare_parameter("target_speed_mps", 5.0)
         # self.declare_parameter("curvature_per_meter", 0.025)
         self.declare_parameter("curvature_per_meter", 0.0)

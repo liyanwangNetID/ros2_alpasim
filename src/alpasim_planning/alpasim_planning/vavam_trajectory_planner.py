@@ -31,16 +31,23 @@ VaVAM requires exactly one camera:
 
     camera_front_wide_120fov
 
-The official interactive VaVAM configuration uses:
+The official interactive VaVAM configuration uses context_length = 1, but
+VAMModel also supports a temporal context. This experimental variant uses:
 
-    context_length = 1
+    context_length = 8
     subsample_factor = 1
 
-Therefore this ROS planning node uses the latest front-wide image for each
-inference request.
+The node therefore keeps the eight most recent consecutive front-wide frames
+and sends them to VaVAM in chronological order (oldest to newest). Inference
+starts only after the history buffer is full. A timestamp-gap check rejects a
+history window if adjacent received frames are too far apart.
 
-The ROS image topic contains sensor_msgs/CompressedImage. The encoded image is
-decoded to an HWC uint8 RGB NumPy array before being passed to VaVAM.
+The ROS image topic contains sensor_msgs/Image with rgb8 encoding.
+
+The AlpaSim ROS Bridge receives the JPEG bytes produced by SensorSim,
+decodes them once with PIL, and publishes an uncompressed ROS Image.
+This planner directly interprets the ROS Image data as an HWC uint8
+RGB NumPy array. It does not perform JPEG decoding or BGR/RGB conversion.
 
 Camera rectification
 --------------------
@@ -151,9 +158,10 @@ from __future__ import annotations
 
 import json
 import math
+import threading
+from collections import deque
 from typing import Optional
 
-import cv2
 import numpy as np
 import rclpy
 import torch
@@ -182,11 +190,12 @@ from rclpy.qos import (
     QoSProfile,
     ReliabilityPolicy,
 )
-from sensor_msgs.msg import CompressedImage
+from sensor_msgs.msg import Image
 from std_msgs.msg import String
 
 
 FRONT_WIDE_CAMERA_ID = "camera_front_wide_120fov"
+DEFAULT_CONTEXT_LENGTH = 8
 
 
 def duration_from_seconds(value: float) -> Duration:
@@ -249,7 +258,7 @@ class VaVAMTrajectoryPlanner(Node):
             "camera_topic",
             (
                 "/alpasim/camera/front_wide/"
-                "image/compressed"
+                "image"
             ),
         )
         self.declare_parameter(
@@ -270,6 +279,14 @@ class VaVAMTrajectoryPlanner(Node):
         self.declare_parameter(
             "inference_rate_hz",
             2.0,
+        )
+        self.declare_parameter(
+            "context_length",
+            DEFAULT_CONTEXT_LENGTH,
+        )
+        self.declare_parameter(
+            "maximum_frame_gap_s",
+            0.25,
         )
         self.declare_parameter(
             "command_distance_threshold_m",
@@ -316,6 +333,19 @@ class VaVAMTrajectoryPlanner(Node):
                 "inference_rate_hz"
             ).value
         )
+        self.context_length = int(
+            self.get_parameter(
+                "context_length"
+            ).value
+        )
+        self.maximum_frame_gap_us = int(
+            float(
+                self.get_parameter(
+                    "maximum_frame_gap_s"
+                ).value
+            )
+            * 1_000_000
+        )
 
         self.command_distance_threshold_m = float(
             self.get_parameter(
@@ -331,6 +361,14 @@ class VaVAMTrajectoryPlanner(Node):
         if inference_rate_hz <= 0.0:
             raise ValueError(
                 "inference_rate_hz must be positive"
+            )
+        if self.context_length <= 0:
+            raise ValueError(
+                "context_length must be positive"
+            )
+        if self.maximum_frame_gap_us <= 0:
+            raise ValueError(
+                "maximum_frame_gap_s must be positive"
             )
 
         if (
@@ -354,18 +392,22 @@ class VaVAMTrajectoryPlanner(Node):
             tokenizer_path=tokenizer_path,
             device=self.device,
             camera_ids=[FRONT_WIDE_CAMERA_ID],
-            context_length=1,
+            context_length=self.context_length,
         )
 
         self.get_logger().info(
             "VaVAM model and tokenizer loaded successfully"
         )
 
+        self.last_input_resolution: Optional[
+            tuple[int, int]
+        ] = None
+
         image_qos = QoSProfile(
             reliability=ReliabilityPolicy.RELIABLE,
             durability=DurabilityPolicy.VOLATILE,
             history=HistoryPolicy.KEEP_LAST,
-            depth=1,
+            depth=max(16, self.context_length * 2),
         )
 
         calibration_qos = QoSProfile(
@@ -397,7 +439,7 @@ class VaVAMTrajectoryPlanner(Node):
 
         self.camera_subscription = (
             self.create_subscription(
-                CompressedImage,
+                Image,
                 camera_topic,
                 self.camera_callback,
                 image_qos,
@@ -422,12 +464,14 @@ class VaVAMTrajectoryPlanner(Node):
             )
         )
 
-        self.latest_image_rgb: Optional[
-            np.ndarray
-        ] = None
-        self.latest_image_timestamp_us: Optional[
-            int
-        ] = None
+        # Camera callbacks keep filling this bounded history while model
+        # inference runs in a worker thread. This prevents the ROS executor from
+        # being blocked by GPU inference and preserves consecutive 10 Hz frames.
+        self.image_history: deque[tuple[int, np.ndarray]] = deque(
+            maxlen=self.context_length
+        )
+        self.image_history_lock = threading.Lock()
+        self.inference_thread: Optional[threading.Thread] = None
         self.latest_route: Optional[Route] = None
 
         self.camera_proto: Optional[
@@ -460,7 +504,10 @@ class VaVAMTrajectoryPlanner(Node):
             f"calibration={calibration_topic}, "
             f"route={route_topic}, "
             f"output={output_topic}, "
-            f"rate={inference_rate_hz:.2f} Hz"
+            f"rate={inference_rate_hz:.2f} Hz, "
+            f"context_length={self.context_length}, "
+            f"maximum_frame_gap="
+            f"{self.maximum_frame_gap_us / 1_000_000:.3f} s"
         )
 
     def calibration_callback(
@@ -536,38 +583,175 @@ class VaVAMTrajectoryPlanner(Node):
 
     def camera_callback(
         self,
-        message: CompressedImage,
+        message: Image,
     ) -> None:
-        """Decode the latest compressed front-wide image as RGB uint8."""
-        encoded = np.frombuffer(
-            bytes(message.data),
-            dtype=np.uint8,
-        )
+        """Receive one raw RGB8 image and store it in timestamp order.
 
-        image_bgr = cv2.imdecode(
-            encoded,
-            cv2.IMREAD_COLOR,
-        )
+        The input image resolution is allowed to vary between AlpaSim camera
+        profiles. This callback does not resize the image because resizing an
+        f-theta image before camera rectification would break the correspondence
+        between image pixels and camera intrinsics.
 
-        if image_bgr is None:
+        The actual image resolution is preserved here. Later,
+        build_ftheta_rectifier_for_resolution() scales the source f-theta
+        intrinsics to this resolution and rectifies the image to the fixed
+        VaVAM pinhole target resolution of 1920 x 1080.
+
+        VAMModel then performs its official model preprocessing:
+            1920 x 1080 rectified RGB image
+            -> resize and center crop to 1600 x 900
+            -> NeuroNCAPTransform
+            -> tokenizer
+            -> VaVAM
+        """
+
+        if message.encoding != "rgb8":
             self.get_logger().warning(
-                "Could not decode front-wide compressed image"
+                "Ignoring front-wide image with unsupported "
+                f"encoding {message.encoding!r}; expected 'rgb8'"
             )
             return
 
-        image_rgb = cv2.cvtColor(
-            image_bgr,
-            cv2.COLOR_BGR2RGB,
+        height = int(message.height)
+        width = int(message.width)
+        step = int(message.step)
+
+        if height <= 0 or width <= 0:
+            self.get_logger().warning(
+                "Ignoring front-wide image with invalid "
+                f"resolution {width}x{height}"
+            )
+            return
+
+        bytes_per_pixel = 3
+        expected_row_bytes = (
+            width * bytes_per_pixel
         )
 
-        self.latest_image_rgb = (
-            np.ascontiguousarray(image_rgb)
+        if step < expected_row_bytes:
+            self.get_logger().warning(
+                "Ignoring front-wide image with invalid step: "
+                f"received={step}, "
+                f"minimum_expected={expected_row_bytes}"
+            )
+            return
+
+        raw_data = np.frombuffer(
+            message.data,
+            dtype=np.uint8,
         )
-        self.latest_image_timestamp_us = (
+
+        required_size = height * step
+
+        if raw_data.size < required_size:
+            self.get_logger().warning(
+                "Ignoring incomplete front-wide image: "
+                f"received_bytes={raw_data.size}, "
+                f"required_bytes={required_size}"
+            )
+            return
+
+        # ROS Image permits padding at the end of each row. First reshape
+        # according to message.step, then remove any row padding.
+        image_rows = raw_data[
+            :required_size
+        ].reshape(
+            height,
+            step,
+        )
+
+        image_rgb = image_rows[
+            :,
+            :expected_row_bytes,
+        ].reshape(
+            height,
+            width,
+            bytes_per_pixel,
+        )
+
+        image_rgb = np.ascontiguousarray(
+            image_rgb,
+            dtype=np.uint8,
+        )
+
+        input_resolution = (
+            width,
+            height,
+        )
+
+        if (
+            input_resolution
+            != self.last_input_resolution
+        ):
+            self.get_logger().info(
+                "Received front-wide raw image: "
+                f"resolution={width}x{height}, "
+                f"encoding={message.encoding}, "
+                f"step={step}, "
+                f"shape={image_rgb.shape}, "
+                f"dtype={image_rgb.dtype}"
+            )
+
+            self.last_input_resolution = (
+                input_resolution
+            )
+
+        image_timestamp_us = (
             ros_time_to_microseconds(
                 message.header.stamp
             )
         )
+
+        with self.image_history_lock:
+            if self.image_history:
+                previous_timestamp_us = (
+                    self.image_history[-1][0]
+                )
+
+                if (
+                    image_timestamp_us
+                    < previous_timestamp_us
+                ):
+                    # A substantial timestamp rewind indicates that a new AlpaSim
+                    # rollout has started while this ROS planner remained alive.
+                    #
+                    # Clear all rollout-specific temporal state. Otherwise, images
+                    # from the new rollout would be rejected forever as out-of-order
+                    # frames because simulation time restarted at an earlier value.
+                    timestamp_rewind_s = (
+                        previous_timestamp_us
+                        - image_timestamp_us
+                    ) / 1_000_000.0
+
+                    self.get_logger().info(
+                        "Detected AlpaSim rollout timestamp reset: "
+                        f"previous={previous_timestamp_us}, "
+                        f"current={image_timestamp_us}, "
+                        f"rewind={timestamp_rewind_s:.3f} s. "
+                        "Resetting VaVAM temporal state."
+                    )
+
+                    self.image_history.clear()
+
+                    self.last_processed_image_timestamp_us = (
+                        None
+                    )
+
+                    self.inference_count = 0
+
+                elif (
+                    image_timestamp_us
+                    == previous_timestamp_us
+                ):
+                    # Duplicate image from the current rollout.
+                    return
+
+            self.image_history.append(
+                (
+                    image_timestamp_us,
+                    image_rgb,
+                )
+            )
 
     def route_callback(
         self,
@@ -723,57 +907,110 @@ class VaVAMTrajectoryPlanner(Node):
         return DriveCommand.STRAIGHT
 
     def run_inference(self) -> None:
-        """Run VaVAM once using the latest complete observation set."""
-        if self.inference_in_progress:
+        """Snapshot eight consecutive frames and start non-blocking inference."""
+        if self.inference_in_progress or self.camera_proto is None:
             return
 
-        image_rgb = self.latest_image_rgb
-        image_timestamp_us = (
-            self.latest_image_timestamp_us
+        with self.image_history_lock:
+            if len(self.image_history) < self.context_length:
+                return
+            frames = list(self.image_history)
+
+        newest_timestamp_us = frames[-1][0]
+        if self.last_processed_image_timestamp_us == newest_timestamp_us:
+            return
+
+        timestamps_us = [timestamp_us for timestamp_us, _ in frames]
+        frame_gaps_us = np.diff(
+            np.asarray(timestamps_us, dtype=np.int64)
         )
-
         if (
-            image_rgb is None
-            or image_timestamp_us is None
-            or self.camera_proto is None
+            len(frame_gaps_us) > 0
+            and int(frame_gaps_us.max())
+            > self.maximum_frame_gap_us
         ):
+            self.get_logger().warning(
+                "Skipping VaVAM inference because the 8-frame history "
+                "is not consecutive enough: "
+                f"maximum_gap={frame_gaps_us.max() / 1_000_000:.3f} s"
+            )
             return
 
-        if (
-            self.last_processed_image_timestamp_us
-            == image_timestamp_us
-        ):
-            return
-
-        if not self.build_rectifier(
-            image_rgb
-        ):
-            return
-
-        assert self.rectifier is not None
-
+        # GPU work must not block the ROS executor. While this worker runs,
+        # camera_callback continues receiving frames into image_history.
         self.inference_in_progress = True
+        self.inference_thread = threading.Thread(
+            target=self._run_inference_worker,
+            args=(frames,),
+            name="vavam-inference-worker",
+            daemon=True,
+        )
+        self.inference_thread.start()
+
+    def _run_inference_worker(
+        self,
+        frames: list[tuple[int, np.ndarray]],
+    ) -> None:
+        """Rectify an 8-frame history, run VaVAM, and publish its trajectory."""
+        newest_timestamp_us = frames[-1][0]
 
         try:
-            rectified_rgb = (
-                self.rectifier.rectify(
+            if not self.build_rectifier(frames[-1][1]):
+                return
+
+            assert self.rectifier is not None
+
+            rectified_frames: list[
+                tuple[int, np.ndarray]
+            ] = []
+
+            expected_rectified_shape = (
+                1080,
+                1920,
+                3,
+            )
+
+            for timestamp_us, image_rgb in frames:
+                rectified_rgb = self.rectifier.rectify(
                     image_rgb
                 )
-            )
+
+                if (
+                    rectified_rgb.shape
+                    != expected_rectified_shape
+                ):
+                    raise ValueError(
+                        "Unexpected rectified image shape: "
+                        f"received={rectified_rgb.shape}, "
+                        f"expected={expected_rectified_shape}"
+                    )
+
+                if rectified_rgb.dtype != np.uint8:
+                    raise ValueError(
+                        "Unexpected rectified image dtype: "
+                        f"received={rectified_rgb.dtype}, "
+                        "expected=uint8"
+                    )
+
+                rectified_rgb = np.ascontiguousarray(
+                    rectified_rgb
+                )
+
+                rectified_frames.append(
+                    (
+                        timestamp_us,
+                        rectified_rgb,
+                    )
+                )
 
             command = self.determine_command()
 
             prediction_input = PredictionInput(
                 camera_images={
-                    FRONT_WIDE_CAMERA_ID: [
-                        (
-                            image_timestamp_us,
-                            rectified_rgb,
-                        )
-                    ]
+                    FRONT_WIDE_CAMERA_ID: rectified_frames
                 },
                 command=command,
-                speed=0.0,
+                speed=10.0,
                 acceleration=0.0,
                 ego_pose_history=[],
             )
@@ -784,15 +1021,23 @@ class VaVAMTrajectoryPlanner(Node):
 
             self.publish_prediction(
                 prediction=prediction,
-                reference_timestamp_us=(
-                    image_timestamp_us
-                ),
+                reference_timestamp_us=newest_timestamp_us,
                 command=command,
             )
 
             self.last_processed_image_timestamp_us = (
-                image_timestamp_us
+                newest_timestamp_us
             )
+
+            if self.inference_count == 1:
+                history_span_s = (
+                    frames[-1][0] - frames[0][0]
+                ) / 1_000_000
+                self.get_logger().info(
+                    "First VaVAM inference used temporal context: "
+                    f"frames={len(frames)}, "
+                    f"history_span={history_span_s:.3f} s"
+                )
 
         except Exception as exc:
             self.get_logger().error(
@@ -931,15 +1176,20 @@ class VaVAMTrajectoryPlanner(Node):
 
         self.inference_count += 1
 
-        if self.inference_count == 1:
+        if (
+            self.inference_count == 1
+            or self.inference_count % 5 == 0
+        ):
             self.get_logger().info(
-                "Published first VaVAM trajectory: "
+                "Published VaVAM trajectory: "
+                f"count={self.inference_count}, "
                 f"command={command.name}, "
                 f"points={len(points)}, "
                 f"final_x={trajectory_xy[-1, 0]:.3f}, "
                 f"final_y={trajectory_xy[-1, 1]:.3f}, "
                 "horizon=3.0 s"
             )
+
 
 
 def main(args=None) -> None:
@@ -951,6 +1201,11 @@ def main(args=None) -> None:
     except KeyboardInterrupt:
         pass
     finally:
+        if (
+            node.inference_thread is not None
+            and node.inference_thread.is_alive()
+        ):
+            node.inference_thread.join(timeout=5.0)
         node.destroy_node()
         rclpy.shutdown()
 
