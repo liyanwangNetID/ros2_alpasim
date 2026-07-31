@@ -32,8 +32,8 @@ class SyntheticTrajectoryPlanner(Node):
         self.declare_parameter("horizon_sec", 4.0)
         self.declare_parameter("sample_period_sec", 0.5)
         self.declare_parameter("target_speed_mps", 5.0)
-        # self.declare_parameter("curvature_per_meter", 0.025)
-        self.declare_parameter("curvature_per_meter", 0.0)
+        self.declare_parameter("curvature_per_meter", 0.025)
+        # self.declare_parameter("curvature_per_meter", 0.0)
 
         output_topic = str(
             self.get_parameter("output_topic").value

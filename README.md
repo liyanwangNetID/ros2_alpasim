@@ -1009,7 +1009,7 @@ uv run --project src/wizard alpasim_wizard \
   driver=manual \
   driver_source=external_static \
   topology=1gpu \
-  wizard.log_dir="$PWD/runs/external_trajectory_run_01" \
+  wizard.log_dir="$PWD/runs/external_control" \
   scenes.scene_ids='["clipgt-01d503d4-449b-46fc-8d78-9085e70d3554"]' \
   wizard.external_services.driver='["172.23.0.1:6789"]' \
   runtime.simulation_config.n_sim_steps=200 \
