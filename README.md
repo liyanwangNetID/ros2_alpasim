@@ -1000,6 +1000,10 @@ ros2 run alpasim_planning synthetic_trajectory_planner
 
 /home/lab/alpasim_ros2_ws/scripts/run_vavam_planner.sh
 
+ros2 run alpasim_planning ground_truth_replay_planner
+
+
+
 uv run --project src/driver python -m alpasim_driver.main \
   --config-path=/home/lab/alpasim/src/driver/configs \
   --config-name=external_trajectory

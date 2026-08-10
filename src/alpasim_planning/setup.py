@@ -41,6 +41,10 @@ setup(
                 "vavam_trajectory_planner = "
                 "alpasim_planning.vavam_trajectory_planner:main"
             ),
+            (
+                "ground_truth_replay_planner = "
+                "alpasim_planning.ground_truth_replay_planner:main"
+            ),
         ],
     },
 )
