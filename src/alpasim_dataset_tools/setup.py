@@ -26,8 +26,11 @@ setup(
         "console_scripts": [
             (
                 "dataset_inspector = "
-                "alpasim_dataset_tools."
-                "dataset_inspector:main"
+                "alpasim_dataset_tools.dataset_inspector:main"
+            ),
+            (
+                "dataset_recorder = "
+                "alpasim_dataset_tools.dataset_recorder:main"
             ),
         ],
     },

@@ -474,10 +474,16 @@ class GroundTruthReplayPlanner(Node):
             self.get_logger().info(
                 "Detected AlpaSim rollout timestamp reset: "
                 f"rewind={rewind_s:.3f} s. "
-                "Resetting Replay Planner counters."
+                "Resetting Replay Planner state and TF buffer."
             )
 
             self.publish_count = 0
+
+            # The same scene can restart with exactly the same simulation
+            # timestamps. Clear dynamic TF history from the previous rollout;
+            # otherwise tf2 rejects the new map -> base_link transforms as
+            # TF_OLD_DATA until simulation time catches up with the old rollout.
+            self.tf_buffer.clear()
 
         self.last_reference_timestamp_ns = (
             reference_timestamp_ns
