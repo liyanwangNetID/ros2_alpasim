@@ -996,6 +996,17 @@ ros2 launch ego_vehicle_description display.launch.py
 
 
 
+
+
+# ROS2 side
+
+## Launch
+ros2 launch ego_vehicle_description display.launch.py
+
+## Record Data
+ros2 run alpasim_dataset_tools data_batch_recorder
+
+## Start a Planner
 ros2 run alpasim_planning synthetic_trajectory_planner
 
 /home/lab/alpasim_ros2_ws/scripts/run_vavam_planner.sh
@@ -1004,10 +1015,18 @@ ros2 run alpasim_planning ground_truth_replay_planner
 
 
 
+
+# Alpasim side
+
+## Bridge to ROS2
 uv run --project src/driver python -m alpasim_driver.main \
   --config-path=/home/lab/alpasim/src/driver/configs \
   --config-name=external_trajectory
 
+## For Record Data
+/home/lab/alpasim_ros2_ws/scripts/run_gt_dataset_streaming.sh
+
+## Run One Scene
 uv run --project src/wizard alpasim_wizard \
   deploy=local \
   driver=manual \
@@ -1022,39 +1041,7 @@ uv run --project src/wizard alpasim_wizard \
   +runtime.simulation_config.realtime_factor=1.0 \
   'runtime.simulation_config.cameras=[{height:480,width:854,logical_id:camera_cross_left_120fov,frame_interval_us:100000,shutter_duration_us:30000},{height:480,width:854,logical_id:camera_front_wide_120fov,frame_interval_us:100000,shutter_duration_us:30000},{height:480,width:854,logical_id:camera_front_tele_30fov,frame_interval_us:100000,shutter_duration_us:30000},{height:480,width:854,logical_id:camera_cross_right_120fov,frame_interval_us:100000,shutter_duration_us:30000}]'
 
-
-uv run --project src/wizard alpasim_wizard \
-  deploy=local \
-  driver=manual \
-  driver_source=external_static \
-  topology=1gpu \
-  wizard.log_dir="$PWD/runs/external_vavam_official_camera" \
-  scenes.scene_ids='["clipgt-01d503d4-449b-46fc-8d78-9085e70d3554"]' \
-  wizard.external_services.driver='["172.23.0.1:6789"]' \
-  runtime.simulation_config.n_sim_steps=200 \
-  runtime.simulation_config.control_timestep_us=100000 \
-  runtime.simulation_config.pose_reporting_interval_us=100000 \
-  +runtime.simulation_config.image_format=jpeg \
-  +runtime.simulation_config.realtime_factor=1.0 \
-  'runtime.simulation_config.cameras=[{height:1080,width:1920,logical_id:camera_cross_left_120fov,frame_interval_us:100000,shutter_duration_us:30000},{height:1080,width:1920,logical_id:camera_front_wide_120fov,frame_interval_us:100000,shutter_duration_us:30000},{height:1080,width:1920,logical_id:camera_front_tele_30fov,frame_interval_us:100000,shutter_duration_us:30000},{height:1080,width:1920,logical_id:camera_cross_right_120fov,frame_interval_us:100000,shutter_duration_us:30000}]'
-
-
-uv run --project src/wizard alpasim_wizard \
-  deploy=local \
-  driver=manual \
-  driver_source=external_static \
-  topology=1gpu \
-  trafficsim=catk \
-  wizard.log_dir="$PWD/runs/catk_reactive" \
-  scenes.scene_ids='["clipgt-01d503d4-449b-46fc-8d78-9085e70d3554"]' \
-  wizard.external_services.driver='["172.23.0.1:6789"]' \
-  runtime.simulation_config.n_sim_steps=200 \
-  runtime.simulation_config.control_timestep_us=100000 \
-  runtime.simulation_config.pose_reporting_interval_us=100000 \
-  +runtime.simulation_config.realtime_factor=1.0 \
-  'runtime.simulation_config.cameras=[{height:480,width:854,logical_id:camera_cross_left_120fov,frame_interval_us:100000,shutter_duration_us:30000},{height:480,width:854,logical_id:camera_front_wide_120fov,frame_interval_us:100000,shutter_duration_us:30000},{height:480,width:854,logical_id:camera_front_tele_30fov,frame_interval_us:100000,shutter_duration_us:30000},{height:480,width:854,logical_id:camera_cross_right_120fov,frame_interval_us:100000,shutter_duration_us:30000}]'
-
-
+## Run a List of Scene
 uv run --project src/wizard alpasim_wizard \
   deploy=local \
   driver=manual \
@@ -1074,3 +1061,37 @@ uv run --project src/wizard alpasim_wizard \
   runtime.simulation_config.pose_reporting_interval_us=100000 \
   +runtime.simulation_config.realtime_factor=1.0 \
   'runtime.simulation_config.cameras=[{height:480,width:854,logical_id:camera_cross_left_120fov,frame_interval_us:100000,shutter_duration_us:30000},{height:480,width:854,logical_id:camera_front_wide_120fov,frame_interval_us:100000,shutter_duration_us:30000},{height:480,width:854,logical_id:camera_front_tele_30fov,frame_interval_us:100000,shutter_duration_us:30000},{height:480,width:854,logical_id:camera_cross_right_120fov,frame_interval_us:100000,shutter_duration_us:30000}]'
+
+## Change Camera Config
+uv run --project src/wizard alpasim_wizard \
+  deploy=local \
+  driver=manual \
+  driver_source=external_static \
+  topology=1gpu \
+  wizard.log_dir="$PWD/runs/external_vavam_official_camera" \
+  scenes.scene_ids='["clipgt-01d503d4-449b-46fc-8d78-9085e70d3554"]' \
+  wizard.external_services.driver='["172.23.0.1:6789"]' \
+  runtime.simulation_config.n_sim_steps=200 \
+  runtime.simulation_config.control_timestep_us=100000 \
+  runtime.simulation_config.pose_reporting_interval_us=100000 \
+  +runtime.simulation_config.image_format=jpeg \
+  +runtime.simulation_config.realtime_factor=1.0 \
+  'runtime.simulation_config.cameras=[{height:1080,width:1920,logical_id:camera_cross_left_120fov,frame_interval_us:100000,shutter_duration_us:30000},{height:1080,width:1920,logical_id:camera_front_wide_120fov,frame_interval_us:100000,shutter_duration_us:30000},{height:1080,width:1920,logical_id:camera_front_tele_30fov,frame_interval_us:100000,shutter_duration_us:30000},{height:1080,width:1920,logical_id:camera_cross_right_120fov,frame_interval_us:100000,shutter_duration_us:30000}]'
+
+## Use CATK
+uv run --project src/wizard alpasim_wizard \
+  deploy=local \
+  driver=manual \
+  driver_source=external_static \
+  topology=1gpu \
+  trafficsim=catk \
+  wizard.log_dir="$PWD/runs/catk_reactive" \
+  scenes.scene_ids='["clipgt-01d503d4-449b-46fc-8d78-9085e70d3554"]' \
+  wizard.external_services.driver='["172.23.0.1:6789"]' \
+  runtime.simulation_config.n_sim_steps=200 \
+  runtime.simulation_config.control_timestep_us=100000 \
+  runtime.simulation_config.pose_reporting_interval_us=100000 \
+  +runtime.simulation_config.realtime_factor=1.0 \
+  'runtime.simulation_config.cameras=[{height:480,width:854,logical_id:camera_cross_left_120fov,frame_interval_us:100000,shutter_duration_us:30000},{height:480,width:854,logical_id:camera_front_wide_120fov,frame_interval_us:100000,shutter_duration_us:30000},{height:480,width:854,logical_id:camera_front_tele_30fov,frame_interval_us:100000,shutter_duration_us:30000},{height:480,width:854,logical_id:camera_cross_right_120fov,frame_interval_us:100000,shutter_duration_us:30000}]'
+
+

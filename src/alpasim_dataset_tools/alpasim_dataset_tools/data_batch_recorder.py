@@ -396,7 +396,7 @@ class DatasetBatchRecorder(Node):
         )
 
         self._lifecycle_lock = threading.RLock()
-        self._subscriptions: list[Any] = []
+        self._subscription_handles: list[Any] = []
         self._session: RecordingSession | None = None
         self._last_clip_active = False
         self._calibration_cache: dict[str, dict[str, Any]] = {}
@@ -446,7 +446,7 @@ class DatasetBatchRecorder(Node):
         )
 
     def _create_subscriptions(self) -> None:
-        self._subscriptions.append(
+        self._subscription_handles.append(
             self.create_subscription(
                 Bool,
                 "/alpasim/simulation/clip_active",
@@ -454,12 +454,12 @@ class DatasetBatchRecorder(Node):
                 self.reliable_qos,
             )
         )
-        self._subscriptions.append(
+        self._subscription_handles.append(
             self.create_subscription(
                 Clock, "/clock", self._clock_callback, self.reliable_qos
             )
         )
-        self._subscriptions.append(
+        self._subscription_handles.append(
             self.create_subscription(
                 EgoTrajectory,
                 "/alpasim/ego/executed_path",
@@ -473,7 +473,7 @@ class DatasetBatchRecorder(Node):
             calibration_topic = (
                 f"/alpasim/camera/{camera_name}/calibration"
             )
-            self._subscriptions.append(
+            self._subscription_handles.append(
                 self.create_subscription(
                     Image,
                     image_topic,
@@ -484,7 +484,7 @@ class DatasetBatchRecorder(Node):
                     callback_group=self._camera_groups[camera_name],
                 )
             )
-            self._subscriptions.append(
+            self._subscription_handles.append(
                 self.create_subscription(
                     String,
                     calibration_topic,
@@ -496,7 +496,7 @@ class DatasetBatchRecorder(Node):
             )
 
         for topic, message_type, _ in DYNAMIC_TOPIC_SPECS:
-            self._subscriptions.append(
+            self._subscription_handles.append(
                 self.create_subscription(
                     message_type,
                     topic,
@@ -960,18 +960,29 @@ class DatasetBatchRecorder(Node):
 
 def main(args=None) -> None:
     rclpy.init(args=args)
+
     node = DatasetBatchRecorder()
-    executor = MultiThreadedExecutor(num_threads=10)
+
+    executor = MultiThreadedExecutor(
+        num_threads=10
+    )
     executor.add_node(node)
+
     try:
         executor.spin()
     except KeyboardInterrupt:
         pass
     finally:
-        executor.remove_node(node)
-        executor.shutdown()
         node.shutdown_active_session()
+
+        executor.remove_node(node)
+
+        executor.shutdown(
+            timeout_sec=10.0
+        )
+
         node.destroy_node()
+
         if rclpy.ok():
             rclpy.shutdown()
 
