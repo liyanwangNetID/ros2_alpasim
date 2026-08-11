@@ -32,6 +32,10 @@ setup(
                 "dataset_recorder = "
                 "alpasim_dataset_tools.dataset_recorder:main"
             ),
+            (
+                "data_batch_recorder = "
+                "alpasim_dataset_tools.data_batch_recorder:main"
+            ),
         ],
     },
 )

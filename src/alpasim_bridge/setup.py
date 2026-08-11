@@ -68,6 +68,10 @@ setup(
             "navigation_marker_publisher = "
             "alpasim_bridge.navigation_marker_publisher:main"
         ),
+        (
+            "clip_state_publisher = "
+            "alpasim_bridge.clip_state_publisher:main"
+        ),
     ],
 },
 

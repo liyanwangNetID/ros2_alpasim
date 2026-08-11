@@ -84,6 +84,27 @@ def generate_launch_description():
         "my_config.rviz",
     )
 
+    # clip alive?
+    clip_state_publisher_node = Node(
+        package="alpasim_bridge",
+        executable="clip_state_publisher",
+        name="clip_state_publisher",
+        output="screen",
+        parameters=[
+            {
+                "input_topic": (
+                    "/alpasim/ground_truth/ego/"
+                    "future_trajectory"
+                ),
+                "output_topic": (
+                    "/alpasim/simulation/clip_active"
+                ),
+                "publish_rate_hz": 10.0,
+                "clip_timeout_s": 2.0,
+            }
+        ],
+    )
+
     # Core data receiver and server nodes start immediately.
     ego_state_publisher = Node(
         package="alpasim_bridge",
@@ -244,6 +265,7 @@ def generate_launch_description():
 
     return LaunchDescription(
         [
+            clip_state_publisher_node,
             ego_state_publisher,
             actor_state_publisher,
             map_server,
