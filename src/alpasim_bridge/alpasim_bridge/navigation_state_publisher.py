@@ -324,16 +324,11 @@ class NavigationStatePublisher(Node):
         self.active_connection_id: int | None = None
 
         self.get_logger().info(
-            "Navigation publisher listening at "
+            "Navigation publisher ready: "
             f"tcp://{self.navigation_tcp_host}:"
-            f"{self.navigation_tcp_port}"
-        )
-        self.get_logger().info(
-            f"Route map topic: {route_map_topic}"
-        )
-        self.get_logger().info(
-            "Route model-input topic: "
-            f"{route_model_input_topic}"
+            f"{self.navigation_tcp_port}, "
+            f"route_map={route_map_topic}, "
+            f"route_model_input={route_model_input_topic}"
         )
 
     def navigation_tcp_server_loop(self) -> None:
@@ -352,12 +347,8 @@ class NavigationStatePublisher(Node):
 
             self.get_logger().info(
                 "Navigation Runtime connected: "
-                f"address={address}, "
                 f"connection_id={connection_id}, "
-                f"previous_packet_count={self.packet_count}, "
-                f"previous_last_sequence={self.last_sequence}, "
-                f"previous_last_reference_timestamp_us="
-                f"{self.last_reference_timestamp_us}"
+                f"address={address}"
             )
 
             try:
@@ -388,14 +379,6 @@ class NavigationStatePublisher(Node):
                         packet["_bridge_connection_id"] = (
                             connection_id
 )
-                        self.get_logger().debug(
-                            "Received navigation TCP packet: "
-                            f"keys={sorted(packet.keys())}, "
-                            f"sequence={packet.get('sequence')}, "
-                            f"reference_timestamp_us="
-                            f"{packet.get('reference_timestamp_us')}"
-                        )
-
                         try:
                             self.packet_queue.put_nowait(
                                 packet
@@ -423,11 +406,21 @@ class NavigationStatePublisher(Node):
                 ValueError,
             ) as exc:
                 if not self.stop_event.is_set():
-                    self.get_logger().warning(
-                        "Navigation TCP connection ended: "
-                        f"address={address}, "
-                        f"error={type(exc).__name__}: {exc}"
-                    )
+                    if (
+                        isinstance(exc, ConnectionError)
+                        and str(exc)
+                        == "Navigation TCP connection closed"
+                    ):
+                        self.get_logger().info(
+                            "Navigation Runtime disconnected: "
+                            f"connection_id={connection_id}"
+                        )
+                    else:
+                        self.get_logger().warning(
+                            "Navigation TCP connection failed: "
+                            f"connection_id={connection_id}, "
+                            f"error={type(exc).__name__}: {exc}"
+                        )
 
     def poll_navigation_packets(self) -> None:
         """Process pending packets without starving other callbacks."""
@@ -479,10 +472,6 @@ class NavigationStatePublisher(Node):
             and reference_timestamp_us
             < self.last_reference_timestamp_us
         ):
-            self.get_logger().info(
-                "Navigation simulation time moved backwards; "
-                "treating packet as a new rollout"
-            )
             self.last_sequence = 0
 
         connection_id = int(
@@ -502,16 +491,9 @@ class NavigationStatePublisher(Node):
             self.active_connection_id
             != connection_id
         ):
-            previous_connection_id = (
-                self.active_connection_id
-            )
-
             self.get_logger().info(
-                "Detected new Navigation Runtime connection: "
-                f"previous_connection_id="
-                f"{previous_connection_id}, "
-                f"new_connection_id={connection_id}. "
-                "Resetting per-rollout navigation state."
+                "Starting navigation rollout: "
+                f"connection_id={connection_id}"
             )
 
             self.active_connection_id = (
@@ -535,13 +517,10 @@ class NavigationStatePublisher(Node):
         ):
             self.get_logger().warning(
                 "Ignoring stale navigation update: "
+                f"connection_id={connection_id}, "
                 f"sequence={sequence}, "
-                f"last_sequence={self.last_sequence}, "
-                f"reference_timestamp_us="
-                f"{reference_timestamp_us}, "
-                f"last_reference_timestamp_us="
-                f"{self.last_reference_timestamp_us}"
-            )        
+                f"last_sequence={self.last_sequence}"
+            )
             return
 
         generator_type = str(
@@ -629,12 +608,9 @@ class NavigationStatePublisher(Node):
         if self.packet_count == 1:
             self.get_logger().info(
                 "Published first navigation update: "
-                f"sequence={sequence}, "
-                f"reference_time="
-                f"{reference_timestamp_us / 1e6:.6f}s, "
+                f"connection_id={connection_id}, "
                 f"route_generator={generator_type}, "
                 f"route_points={published_route_points}, "
-                # f"planned_points={planned_point_count}, "
                 f"force_gt_active={force_gt_active}"
             )
 
