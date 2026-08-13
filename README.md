@@ -1016,6 +1016,402 @@ ros2 run alpasim_planning ground_truth_replay_planner
 
 
 
+
+
+# For vlm backbone training dataset
+## 模型输入
+    4 cameras × 2 frames
+      front_wide
+      front_tele
+      cross_left
+      cross_right
+
+    frame times:
+      t0 - 0.5 s
+      t0
+
+    ego history:
+      过去 M 个 waypoint
+
+    navigation text:
+      "Turn right at the upcoming intersection."
+
+## 模型监督输出
+    {
+      "scene_facts": {
+        "road_context": "intersection",
+        "traffic_control": "red_light",
+        "critical_actor": "vehicle_ahead"
+      },
+      "decision": {
+        "lateral": "keep_lane",
+        "longitudinal": "stop"
+      },
+      "reasoning": "The route continues straight, but the traffic light ahead is red. The ego vehicle should remain in its lane and stop before entering the intersection."
+    }
+
+## Step 0：冻结数据格式和版本
+正式定义：
+  Raw dataset schema v0.1
+  Annotation schema v0.1
+  Sample schema v0.1
+明确：
+  clip 目录结构
+  时间单位统一为纳秒
+  坐标系含义
+  camera 名称
+  每类 JSON/JSONL 的字段
+  navigation、meta-action、scene-fact 的枚举
+  annotation version
+  generator version
+产物:
+  schemas/
+  ├── clip_schema.md
+  ├── meta_action_schema.json
+  ├── scene_fact_schema.json
+  └── sample_schema.json
+
+## Step 1：Build Clip Manifest
+工作内容
+  扫描所有clip，汇总：
+    clip_id
+    validation status
+    起止仿真时间
+    duration
+    每路相机帧数
+    每路图像时间范围
+    route 是否存在
+    executed path 点数
+    完整 GT trajectory
+    actor 数据
+    VectorMap
+    文件路径
+    文件大小
+
+同时做二次质量检查：
+  JSON/JSONL 是否可读
+  JPEG 和 timestamps 数量是否一致
+  图像时间戳是否递增
+  必需文件是否存在
+  仿真时长是否正常
+  route 是否可用
+
+产物:
+  建议先用：
+    manifests/clips.jsonl
+  稳定后可以转 Parquet, 每行类似：
+    {
+      "clip_id": "test_clip_001",
+      "valid": true,
+      "duration_sec": 19.6,
+      "camera_counts": {
+        "front_wide": 152,
+        "front_tele": 155,
+        "cross_left": 155,
+        "cross_right": 149
+      },
+      "has_route": true,
+      "has_complete_gt": true
+    }
+
+## Step 2：统一时间轴和数据读取 API
+工作内容:
+  实现一个统一的 DrivingClipReader：
+    clip = DrivingClipReader(clip_path)
+
+    clip.get_camera_frame(
+        camera="front_wide",
+        target_ns=t0,
+        tolerance_ns=...
+    )
+
+    clip.get_ego_history(
+        end_ns=t0,
+        num_points=M,
+    )
+
+    clip.get_route_at(t0)
+    clip.get_actors_at(t0)
+    clip.get_future_trajectory(t0)
+    clip.get_vector_map()
+
+  这是后面所有生成器共享的基础组件。
+
+需要实现：
+  最近时间戳查找
+  精确同步优先
+  时间容差
+  轨迹插值
+  ego-local 坐标转换
+  缺失数据处理
+  缓存，避免重复解析大 JSONL
+
+产物:
+  dataset/
+  ├── clip_reader.py
+  ├── temporal_index.py
+  ├── coordinate_utils.py
+  └── tests/
+
+## Step 3：生成候选 Anchor
+工作内容:
+  先用固定间隔生成候选 anchor，例如：每 0.5 秒一个候选时刻
+  过滤：
+    t0 - 0.5 s 找不到完整视觉历史
+    t0 前没有足够 ego history
+    ego state 不连贯
+    t0 后没有所需 future GT
+    三路或四路图像时间误差过大
+    route 缺失
+    clip 开始和结束边界
+
+产物：
+  annotations/candidate_anchors.jsonl
+每个 clip 可能先产生约 25 至 35 个有效候选点。
+
+## Step 4：Meta-action Generator
+工作内容：
+  把连续轨迹转换为离散驾驶行为。
+
+输入：
+  完整 future ego trajectory
+  executed path
+  speed
+  acceleration
+  yaw
+  yaw rate
+  可选 lane topology
+输出：
+  {
+    "lateral_action": "turn_right",
+    "longitudinal_action": "decelerate",
+    "motion_state": "moving",
+    "confidence": 0.96
+  }
+
+Lateral可选：
+  keep_direction
+  turn_left
+  turn_right
+  change_lane_left
+  change_lane_right
+
+Longitudinal：
+  accelerate
+  maintain_speed
+  decelerate
+  stop
+
+主要工作：
+  定义速度和加速度阈值
+  定义 yaw 和路径曲率阈值
+  定义停车判断
+  平滑轨迹，避免噪声抖动
+  处理动作转换
+  可视化轨迹与标签
+  人工检查典型样本
+
+产物：
+  annotations/meta_actions.jsonl
+
+## Step 5：Keyframe Selector
+工作内容：
+  从候选 anchor 中选出有价值的时刻。
+
+重点选择：
+  动作发生转换
+  开始加速或减速
+  转弯开始前
+  进入路口前
+  停车前
+  重新起步
+  导航方向明显变化
+  actor 交互发生变化
+同时保留少量正常直行样本，避免数据只包含异常和动作转换。
+
+选择策略：
+  固定采样 baseline
+  +
+  meta-action transition anchors
+  +
+  类别平衡采样
+
+产物：
+  annotations/keyframes.jsonl
+
+## Step 6：Navigation Text Generator
+工作内容：
+  把局部 route waypoint 转换为模型输入文本。
+
+输入：
+  /alpasim/route/model_input
+  VectorMap
+  当前 ego pose
+输出：
+  Continue straight.
+  Turn left ahead.
+  Turn right ahead.
+  Continue along the current lane.
+  Turn right/left at the upcoming intersection.
+  Follow the right/left branch ahead.
+  Change to the right/left lane when safe.
+
+注意不能泄漏：
+  未来精确位置
+  未来速度
+  精确转向时间
+  未来控制量
+
+产物：
+  annotations/navigation.jsonl
+
+## Step 7：Scene-Fact Generator
+工作内容：
+  利用仿真真值生成候选场景事实：
+    道路环境
+    可见交通参与者
+    相对位置
+    相对运动
+    交通标志和 wait line
+    与驾驶决策相关的关键对象
+
+暂时只做：
+  road_context
+  lead_vehicle presence
+  left/right nearby vehicle
+  relative motion category
+  intersection proximity
+  stop/yield-line proximity
+例如：
+  {
+    "road_context": "intersection",
+    "lead_vehicle": {
+      "present": true,
+      "relative_distance": "near",
+      "relative_motion": "slower"
+    },
+    "left_vehicle": false,
+    "right_vehicle": true
+  }
+
+可观察性过滤：
+  需要避免把不可见的 simulator 真值写入文本监督。
+  第一版可以采用：
+    actor 是否位于任一选定相机视锥
+    投影框是否在图像范围内
+    投影面积是否超过阈值
+    距离是否合理
+    事实是否与决策相关
+  严格遮挡检测可以留到后续版本。
+
+产物:
+  annotations/scene_facts.jsonl
+
+## Step 8：结构化 CoC 构造
+工作内容:
+  把以下内容组合起来：
+    Navigation
+    Scene facts
+    Meta-action
+  形成结构化因果链：
+    {
+      "navigation": "turn_right",
+      "critical_components": [
+        "approaching intersection",
+        "slower lead vehicle"
+      ],
+      "decision": {
+        "lateral": "prepare_right_turn",
+        "longitudinal": "decelerate"
+      }
+    }
+
+## Step 9：Reasoning Generator
+工作内容:
+  把结构化 CoC 转换成短文本：
+    The route requires a right turn at the upcoming intersection.
+    A slower vehicle is ahead, so the ego vehicle should reduce speed
+    while preparing for the turn.
+  考虑模板生成，也可以升级为用教师大模型生成。
+
+## Step 10：Sample Manifest Builder
+工作内容：
+  将每个 anchor 的所有内容装配为训练索引：
+    {
+      "sample_id": "test_clip_001_9305000000000",
+      "clip_id": "test_clip_001",
+      "anchor_ns": 9305000000000,
+      "images": {
+        "front_wide": ["...", "..."],
+        "front_tele": ["...", "..."],
+        "cross_left": ["...", "..."],
+        "cross_right": ["...", "..."]
+      },
+      "ego_history": {
+        "start_index": 40,
+        "end_index": 47
+      },
+      "navigation_text": "Turn right ahead.",
+      "target": {
+        "scene_facts": {},
+        "decision": {},
+        "reasoning": "..."
+      }
+    }
+
+产物：
+  manifests/samples_v0.jsonl
+
+## Step 11：Train/Validation/Test 划分
+工作内容：
+  必须按 clip 划分，不能随机按 anchor 划分。
+  例如：
+    train: 80%
+    validation: 10%
+    test: 10%
+  检查各 split 中：
+    turn left/right/straight
+    accelerate/decelerate/stop
+    路口/非路口
+    actor 交互类别
+  避免同一个 clip 的相邻 anchor 同时出现在训练集和验证集。
+
+产物：
+  manifests/train_v0.jsonl
+  manifests/validation_v0.jsonl
+  manifests/test_v0.jsonl
+
+## Step 12：数据审核与统计
+工作内容：
+  自动检查：
+    图像存在
+    时间戳满足容差
+    ego history 完整
+    route 存在
+    target JSON 可解析
+    reasoning 与 meta-action 一致
+    不可观察事实未进入 reasoning
+    样本类别分布合理
+  人工抽样：
+    人工检查100至200 个 anchor
+  重点覆盖：
+    直行
+    左转
+    右转
+    减速
+    停车
+    前车
+    路口
+    交通灯
+    不同相机视角
+
+产物：
+  reports/dataset_statistics.json
+  reports/manual_review.csv
+
+
+
+
 # Alpasim side
 
 ## Bridge to ROS2
