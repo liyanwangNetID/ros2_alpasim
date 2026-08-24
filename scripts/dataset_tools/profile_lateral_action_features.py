@@ -39,9 +39,20 @@ from coordinate_utils import (  # noqa: E402
     unwrap_angles,
 )
 from vector_map_reader import VectorMapReader  # noqa: E402
+from natural_lane_corridor import (  # noqa: E402
+    NaturalCorridorConfig,
+    assess_branch_candidate_reliability,
+    build_natural_lane_corridor,
+    compare_actual_lane_sequence,
+    recover_boundary_branch_comparisons,
+)
+from inspect_natural_corridor_case import (  # noqa: E402
+    relative_heading_features,
+    trajectory_path_length,
+)
 
-SCRIPT_VERSION = "0.2.0"
-FEATURE_FORMAT_VERSION = "0.2-draft"
+SCRIPT_VERSION = "0.3.2"
+FEATURE_FORMAT_VERSION = "0.3.2-draft"
 DEFAULT_MINIMUM_PATH_SEGMENT_LENGTH_M = 0.1
 
 ROOT = Path("/home/lab/data_from_alpasim")
@@ -60,10 +71,10 @@ DEFAULT_OUTPUT = (
     / "annotations"
     / "v0.1-draft"
     / "intermediate"
-    / "lateral_action_features_v0.2.jsonl"
+    / "lateral_action_features_v0.3.jsonl"
 )
 DEFAULT_SUMMARY = (
-    ROOT / "reports" / "lateral_action_feature_summary_v0.2.json"
+    ROOT / "reports" / "lateral_action_feature_summary_v0.3.json"
 )
 
 
@@ -266,6 +277,151 @@ def topology_evidence(
     }
 
 
+
+def branch_comparison_to_dict(comparison: Any) -> dict[str, Any]:
+    return {
+        "branch_lane_id": comparison.branch_lane_id,
+        "natural_successor_lane_id": comparison.natural_successor_lane_id,
+        "actual_successor_lane_id": comparison.actual_successor_lane_id,
+        "actual_matches_natural": comparison.actual_matches_natural,
+        "actual_relation_to_natural": comparison.actual_relation_to_natural,
+    }
+
+
+def natural_corridor_features(
+    future_points: Sequence[Mapping[str, Any]],
+    lane_feature: Mapping[str, Any],
+    vector_map: VectorMapReader,
+) -> dict[str, Any]:
+    lane_sequence = [
+        str(value) for value in lane_feature.get("compressed_lane_sequence", [])
+    ]
+    if not lane_sequence:
+        return {
+            "status": "unavailable",
+            "reasons": ["empty_lane_sequence"],
+            "turn_evidence_status": "fallback_keep_direction",
+        }
+
+    poses = [pose2d_from_pose_mapping(point["pose"]) for point in future_points]
+    path_length_m = trajectory_path_length(future_points)
+    if path_length_m <= 0.0:
+        return {
+            "status": "unavailable",
+            "reasons": ["zero_future_path_length"],
+            "turn_evidence_status": "fallback_keep_direction",
+        }
+
+    start_lane_id = lane_sequence[0]
+    projection = vector_map.project_to_lane(
+        start_lane_id, Point2D(poses[0].x, poses[0].y)
+    )
+    config = NaturalCorridorConfig()
+    corridor = build_natural_lane_corridor(
+        vector_map,
+        start_lane_id,
+        lookahead_distance_m=path_length_m,
+        start_arc_length_m=projection.arc_length_m,
+        config=config,
+    )
+    if not corridor.points:
+        return {
+            "status": "unavailable",
+            "reasons": ["natural_corridor_has_no_points"],
+            "future_path_length_m": path_length_m,
+            "start_lane_id": start_lane_id,
+            "start_projection_arc_length_m": projection.arc_length_m,
+            "start_projection_distance_m": projection.distance_m,
+            "lane_ids": list(corridor.lane_ids),
+            "total_distance_m": corridor.total_distance_m,
+            "terminated_reason": corridor.terminated_reason,
+            "branch_decisions": [],
+            "boundary_branch_comparisons": [],
+            "actual_branch_comparisons": [],
+            "relative_heading": {},
+            "turn_evidence_status": "fallback_keep_direction",
+            "reliable_directional_relations": [],
+            "fallback_reasons": ["natural_corridor_has_no_points"],
+        }
+
+    actual_comparisons = compare_actual_lane_sequence(lane_sequence, corridor)
+    boundary_comparisons = recover_boundary_branch_comparisons(
+        vector_map, start_lane_id, config=config
+    )
+    relative = relative_heading_features(future_points, corridor)
+
+    decision_records = []
+    unreliable_reasons: list[str] = []
+    for decision in corridor.branch_decisions:
+        decision_records.append(
+            {
+                "branch_lane_id": decision.branch_lane_id,
+                "chosen_natural_successor_lane_id": decision.chosen_successor_lane_id,
+                "reliability_status": decision.reliability_status,
+                "reliability_reasons": list(decision.reliability_reasons),
+                "score_margin": decision.score_margin,
+            }
+        )
+        if decision.reliability_status != "reliable":
+            unreliable_reasons.extend(decision.reliability_reasons)
+
+    all_comparisons = tuple(boundary_comparisons) + tuple(actual_comparisons)
+    reliable_directional_relations = [
+        comparison.actual_relation_to_natural
+        for comparison in all_comparisons
+        if comparison.actual_relation_to_natural
+        in ("left_of_natural", "right_of_natural")
+    ]
+    ambiguous_relations = [
+        comparison.actual_relation_to_natural
+        for comparison in all_comparisons
+        if comparison.actual_relation_to_natural
+        in (
+            "natural_continuation_uncertain",
+            "ambiguous_relative_direction",
+            "actual_successor_not_candidate",
+        )
+    ]
+    uncertain = bool(ambiguous_relations) or bool(unreliable_reasons)
+    unreliable_reasons.extend(
+        "branch_comparison_" + relation for relation in ambiguous_relations
+    )
+
+    if uncertain:
+        turn_evidence_status = "fallback_keep_direction"
+    elif reliable_directional_relations:
+        turn_evidence_status = "directional_branch_observed"
+    else:
+        turn_evidence_status = "natural_or_unobserved_keep_direction"
+
+    scalar_relative = {
+        key: value
+        for key, value in relative.items()
+        if isinstance(value, (int, float))
+    }
+    return {
+        "status": "available",
+        "future_path_length_m": path_length_m,
+        "start_lane_id": start_lane_id,
+        "start_projection_arc_length_m": projection.arc_length_m,
+        "start_projection_distance_m": projection.distance_m,
+        "lane_ids": list(corridor.lane_ids),
+        "total_distance_m": corridor.total_distance_m,
+        "terminated_reason": corridor.terminated_reason,
+        "branch_decisions": decision_records,
+        "boundary_branch_comparisons": [
+            branch_comparison_to_dict(value) for value in boundary_comparisons
+        ],
+        "actual_branch_comparisons": [
+            branch_comparison_to_dict(value) for value in actual_comparisons
+        ],
+        "relative_heading": scalar_relative,
+        "turn_evidence_status": turn_evidence_status,
+        "reliable_directional_relations": reliable_directional_relations,
+        "fallback_reasons": sorted(set(unreliable_reasons)),
+    }
+
+
 def extract_lateral_features(
     future_points: Sequence[Mapping[str, Any]],
     lane_feature: Mapping[str, Any],
@@ -280,6 +436,11 @@ def extract_lateral_features(
     map_points = [Point2D(pose.x, pose.y) for pose in poses]
     pose_yaws = [pose.yaw for pose in poses]
     yaw_signed, yaw_absolute = signed_and_absolute_change(pose_yaws)
+    initial_yaw = pose_yaws[0]
+    ego_yaw_excursions = [
+        abs(normalize_angle(yaw - initial_yaw)) for yaw in pose_yaws
+    ]
+    ego_maximum_yaw_excursion = max(ego_yaw_excursions)
     filtered_path = filtered_path_heading_features(
         map_points,
         minimum_segment_length_m=minimum_path_segment_length_m,
@@ -330,6 +491,9 @@ def extract_lateral_features(
         "trajectory_point_count": len(future_points),
         "trajectory_yaw_signed_change_rad": yaw_signed,
         "trajectory_yaw_absolute_change_rad": yaw_absolute,
+        "ego_total_yaw_change_rad": yaw_signed,
+        "ego_maximum_yaw_excursion_rad": ego_maximum_yaw_excursion,
+        "ego_total_absolute_yaw_change_rad": yaw_absolute,
         "final_relative_x_m": final_local.x,
         "final_relative_y_m": final_local.y,
         "final_relative_yaw_rad": normalize_angle(
@@ -358,6 +522,11 @@ def extract_lateral_features(
         "lateral_quality_gate": lane_feature["lateral_quality_gate"],
     }
     result.update(filtered_path)
+    result["natural_corridor"] = natural_corridor_features(
+        future_points,
+        lane_feature,
+        vector_map,
+    )
     return result
 
 
@@ -487,6 +656,9 @@ def main() -> int:
     numeric_fields = (
         "trajectory_yaw_signed_change_rad",
         "trajectory_yaw_absolute_change_rad",
+        "ego_total_yaw_change_rad",
+        "ego_maximum_yaw_excursion_rad",
+        "ego_total_absolute_yaw_change_rad",
         "filtered_path_signed_heading_change_rad",
         "filtered_path_absolute_heading_change_rad",
         "valid_path_segment_count",
@@ -516,6 +688,13 @@ def main() -> int:
             profile_counts["contains_adjacent_transition"] += 1
         if lateral["path_heading_reliable"]:
             profile_counts["path_heading_reliable"] += 1
+        natural = lateral["natural_corridor"]
+        profile_counts[
+            "natural_corridor_" + str(natural["status"])
+        ] += 1
+        profile_counts[
+            "turn_evidence_" + str(natural["turn_evidence_status"])
+        ] += 1
 
     level_distributions: dict[str, Any] = {}
     for level in ("A", "B", "C"):

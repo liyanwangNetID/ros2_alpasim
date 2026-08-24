@@ -28,9 +28,10 @@ if str(MODULE_DIRECTORY) not in sys.path:
     sys.path.insert(0, str(MODULE_DIRECTORY))
 
 from clip_reader import DrivingClipReader, stamp_mapping_to_ns  # noqa: E402
+from coordinate_utils import pose2d_from_pose_mapping  # noqa: E402
 
-SCRIPT_VERSION = "0.1.0"
-FEATURE_FORMAT_VERSION = "0.1-draft"
+SCRIPT_VERSION = "0.2.0"
+FEATURE_FORMAT_VERSION = "0.2-draft"
 ROOT = Path("/home/lab/data_from_alpasim")
 DEFAULT_ANCHORS = ROOT / "annotations" / "v0.1-draft" / "candidate_anchors.jsonl"
 DEFAULT_LANE_FEATURES = (
@@ -39,9 +40,9 @@ DEFAULT_LANE_FEATURES = (
 )
 DEFAULT_OUTPUT = (
     ROOT / "annotations" / "v0.1-draft" / "intermediate"
-    / "meta_action_features_v0.1.jsonl"
+    / "meta_action_features_v0.2.jsonl"
 )
-DEFAULT_SUMMARY = ROOT / "reports" / "meta_action_feature_summary_v0.1.json"
+DEFAULT_SUMMARY = ROOT / "reports" / "meta_action_feature_summary_v0.2.json"
 
 
 def read_jsonl(path: Path) -> list[dict[str, Any]]:
@@ -135,16 +136,70 @@ def longest_contiguous_duration_below(
     return longest
 
 
+def _pose_derived_point_speeds(
+    points: Sequence[Mapping[str, Any]],
+    stamps_ns: Sequence[int],
+) -> list[float]:
+    """Derive one speed per pose using adjacent displacement and timestamps."""
+    poses = [pose2d_from_pose_mapping(point["pose"]) for point in points]
+    interval_speeds: list[float] = []
+    interval_durations: list[float] = []
+    for index in range(len(poses) - 1):
+        duration_sec = (stamps_ns[index + 1] - stamps_ns[index]) / 1e9
+        if duration_sec <= 0.0:
+            raise ValueError("future trajectory timestamps must increase")
+        distance_m = math.hypot(
+            poses[index + 1].x - poses[index].x,
+            poses[index + 1].y - poses[index].y,
+        )
+        interval_speeds.append(distance_m / duration_sec)
+        interval_durations.append(duration_sec)
+
+    if not interval_speeds:
+        raise ValueError("future trajectory requires at least one interval")
+
+    point_speeds = [interval_speeds[0]]
+    for index in range(1, len(points) - 1):
+        previous_duration = interval_durations[index - 1]
+        next_duration = interval_durations[index]
+        point_speeds.append(
+            (
+                interval_speeds[index - 1] * previous_duration
+                + interval_speeds[index] * next_duration
+            )
+            / (previous_duration + next_duration)
+        )
+    point_speeds.append(interval_speeds[-1])
+    return point_speeds
+
+
+def _median_absolute_error(first: Sequence[float], second: Sequence[float]) -> float:
+    return statistics.median(abs(a - b) for a, b in zip(first, second))
+
+
 def extract_longitudinal_features(
     points: Sequence[Mapping[str, Any]],
 ) -> dict[str, Any]:
     if len(points) < 2:
         raise ValueError("future trajectory requires at least two points")
     stamps = [stamp_mapping_to_ns(point["stamp"]) for point in points]
-    speeds = [finite_float(point["speed"], "speed") for point in points]
     for previous, current in zip(stamps, stamps[1:]):
         if current <= previous:
             raise ValueError("future trajectory timestamps must increase")
+
+    reported_speeds = [finite_float(point["speed"], "speed") for point in points]
+    speeds = _pose_derived_point_speeds(points, stamps)
+    speed_errors = [abs(a - b) for a, b in zip(reported_speeds, speeds)]
+    ordered_errors = sorted(speed_errors)
+    p95_error = ordered_errors[round((len(ordered_errors) - 1) * 0.95)]
+    reported_zero_count = sum(value <= 0.01 for value in reported_speeds)
+    reported_zero_fraction = reported_zero_count / len(reported_speeds)
+    median_error = statistics.median(speed_errors)
+    reported_speed_reliable = (
+        reported_zero_fraction <= 0.05
+        and median_error <= 1.0
+        and p95_error <= 3.0
+    )
 
     accelerations = []
     for point in points:
@@ -160,6 +215,7 @@ def extract_longitudinal_features(
     first_half_count = max(1, len(speeds) // 2)
     second_half_start = len(speeds) // 2
     return {
+        "speed_source_used": "pose_time_derived",
         "trajectory_point_count": len(points),
         "trajectory_duration_sec": duration_sec,
         "initial_speed_mps": speeds[0],
@@ -171,6 +227,16 @@ def extract_longitudinal_features(
         "speed_delta_mps": speed_delta,
         "absolute_speed_delta_mps": abs(speed_delta),
         "derived_mean_acceleration_mps2": derived_mean_acceleration,
+        "reported_initial_speed_mps": reported_speeds[0],
+        "reported_final_speed_mps": reported_speeds[-1],
+        "reported_mean_speed_mps": statistics.mean(reported_speeds),
+        "reported_minimum_speed_mps": min(reported_speeds),
+        "reported_maximum_speed_mps": max(reported_speeds),
+        "reported_zero_speed_count": reported_zero_count,
+        "reported_zero_speed_fraction": reported_zero_fraction,
+        "reported_vs_pose_median_absolute_error_mps": median_error,
+        "reported_vs_pose_p95_absolute_error_mps": p95_error,
+        "reported_speed_reliable": reported_speed_reliable,
         "reported_mean_longitudinal_acceleration_mps2": (
             statistics.mean(accelerations) if accelerations else None
         ),
@@ -402,8 +468,12 @@ def main() -> int:
                 "final_speed_below_0_3_mps",
                 "final_speed_below_0_5_mps",
                 "initial_speed_below_0_3_mps",
+                "reported_speed_reliable",
             )
         },
+        "speed_source_counts": dict(
+            Counter(item["longitudinal"]["speed_source_used"] for item in output)
+        ),
     }
 
     feature_text = "".join(
