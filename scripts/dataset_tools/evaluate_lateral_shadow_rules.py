@@ -17,12 +17,16 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
-VERSION = "0.2.0"
+VERSION = "0.2.1"
 ROOT = Path("/home/lab/data_from_alpasim")
 DEFAULT_LABEL_INPUT = ROOT / "annotations/v0.1-draft/meta_actions_v0.1.jsonl"
 DEFAULT_GEOMETRY_INPUT = (
     ROOT / "annotations/v0.1-draft/intermediate/"
     "lane_change_geometry_features_v0.1.jsonl"
+)
+DEFAULT_LATERAL_FEATURE_INPUT = (
+    ROOT / "annotations/v0.1-draft/intermediate/"
+    "lateral_action_features_v0.3.jsonl"
 )
 DEFAULT_OUTPUT = ROOT / "reports/lateral_shadow_evaluation_v0.1.jsonl"
 DEFAULT_SUMMARY = ROOT / "reports/lateral_shadow_evaluation_summary_v0.1.json"
@@ -86,8 +90,25 @@ def observed_proposal(items: Sequence[Mapping[str, Any]]) -> tuple[str | None, l
 
 def reviewed_in_progress_proposal(
     geometry: Mapping[str, Any],
+    lateral_record: Mapping[str, Any] | None = None,
 ) -> tuple[str | None, list[str]]:
     actions: set[str] = set()
+
+    # Backwards-compatible unit-test behavior when no lateral record is passed.
+    # Production evaluation always supplies the strict third input.
+    if lateral_record is not None:
+        lateral = lateral_record.get("lateral", lateral_record)
+        ego_change = lateral.get("ego_total_yaw_change_rad")
+        map_change = lateral.get("map_corridor_heading_change_rad")
+
+        if not isinstance(ego_change, (int, float)):
+            return None, []
+        if not isinstance(map_change, (int, float)):
+            return None, []
+
+        residual_deg = abs(float(ego_change) - float(map_change)) * 180.0 / 3.141592653589793
+        if residual_deg < 2.0:
+            return None, []
 
     for item in geometry.get("in_progress_candidates", []):
         if not bool(item.get("candidate")):
@@ -125,11 +146,14 @@ def reviewed_in_progress_proposal(
         "reviewed_in_progress_lane_change_geometry",
         "final_target_advantage_at_least_minus_2m",
         "directional_heading_progress_at_most_10deg",
+        "absolute_ego_to_map_heading_residual_at_least_2deg",
     ]
 
 
 def propose_lateral(
-    frozen: Mapping[str, Any], geometry: Mapping[str, Any]
+    frozen: Mapping[str, Any],
+    geometry: Mapping[str, Any],
+    lateral_record: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     old_action = str(frozen["lateral"]["action"])
     old_quality = str(frozen["lateral"].get("quality_status", "unknown"))
@@ -164,7 +188,10 @@ def propose_lateral(
             "reasons": observed_reasons,
         }
 
-    reviewed_action, reviewed_reasons = reviewed_in_progress_proposal(geometry)
+    reviewed_action, reviewed_reasons = reviewed_in_progress_proposal(
+        geometry,
+        lateral_record,
+    )
 
     if reviewed_action is not None:
         return {
@@ -184,6 +211,11 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--label-input", type=Path, default=DEFAULT_LABEL_INPUT)
     parser.add_argument("--geometry-input", type=Path, default=DEFAULT_GEOMETRY_INPUT)
+    parser.add_argument(
+        "--lateral-feature-input",
+        type=Path,
+        default=DEFAULT_LATERAL_FEATURE_INPUT,
+    )
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--summary-output", type=Path, default=DEFAULT_SUMMARY)
     parser.add_argument("--force", action="store_true")
@@ -194,11 +226,19 @@ def main() -> int:
     args = parse_args()
     labels = read_jsonl_index(args.label_input)
     geometry = read_jsonl_index(args.geometry_input)
-    if set(labels) != set(geometry):
+    lateral_features = read_jsonl_index(args.lateral_feature_input)
+
+    label_ids = set(labels)
+    geometry_ids = set(geometry)
+    lateral_ids = set(lateral_features)
+
+    if label_ids != geometry_ids or label_ids != lateral_ids:
         raise ValueError(
-            "label and geometry anchor sets differ; "
-            f"missing geometry={sorted(set(labels)-set(geometry))[:10]}, "
-            f"missing labels={sorted(set(geometry)-set(labels))[:10]}"
+            "label, geometry, and lateral-feature anchor sets differ; "
+            f"missing geometry={sorted(label_ids-geometry_ids)[:10]}, "
+            f"extra geometry={sorted(geometry_ids-label_ids)[:10]}, "
+            f"missing lateral={sorted(label_ids-lateral_ids)[:10]}, "
+            f"extra lateral={sorted(lateral_ids-label_ids)[:10]}"
         )
 
     output: list[dict[str, Any]] = []
@@ -206,9 +246,25 @@ def main() -> int:
     source_counts = Counter()
     for anchor_id, frozen in labels.items():
         geo = geometry[anchor_id]
-        if frozen["clip_id"] != geo["clip_id"] or frozen["anchor_ns"] != geo["anchor_ns"]:
-            raise ValueError(f"identity mismatch for {anchor_id}")
-        proposal = propose_lateral(frozen, geo)
+        lateral_record = lateral_features[anchor_id]
+
+        for other_name, other in (
+            ("geometry", geo),
+            ("lateral", lateral_record),
+        ):
+            if (
+                frozen["clip_id"] != other["clip_id"]
+                or frozen["anchor_ns"] != other["anchor_ns"]
+            ):
+                raise ValueError(
+                    f"identity mismatch for {anchor_id} in {other_name} input"
+                )
+
+        proposal = propose_lateral(
+            frozen,
+            geo,
+            lateral_record,
+        )
         old_action = str(frozen["lateral"]["action"])
         proposed_action = str(proposal["action"])
         changed = old_action != proposed_action
@@ -239,6 +295,16 @@ def main() -> int:
     summary = {
         "shadow_evaluator_version": VERSION,
         "generated_at": datetime.now(timezone.utc).isoformat(),
+        "inputs": {
+            "labels": str(args.label_input),
+            "geometry": str(args.geometry_input),
+            "lateral_features": str(args.lateral_feature_input),
+        },
+        "reviewed_in_progress_policy": {
+            "minimum_final_target_advantage_m": -2.0,
+            "maximum_absolute_directional_heading_progress_deg": 10.0,
+            "minimum_absolute_ego_to_map_heading_residual_deg": 2.0,
+        },
         "anchor_count": len(output),
         "changed_count": sum(item["changed"] for item in output),
         "unchanged_count": sum(not item["changed"] for item in output),

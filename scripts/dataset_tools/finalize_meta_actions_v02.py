@@ -213,6 +213,7 @@ def main() -> int:
                 "apply_reviewed_shadow_geometry": True,
                 "minimum_final_target_advantage_m": -2.0,
                 "maximum_absolute_directional_heading_progress_deg": 10.0,
+                "minimum_absolute_ego_to_map_heading_residual_deg": 2.0,
             },
             "longitudinal": "inherit_v0.1_unchanged",
         },
