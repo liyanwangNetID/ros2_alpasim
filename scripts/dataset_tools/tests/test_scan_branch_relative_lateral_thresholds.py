@@ -24,6 +24,9 @@ def record(anchor_id, relation, *, first=0, second=0, total=0, start=0, middle=0
         "lateral": {
             "lateral_quality_gate": {"passed": True},
             "contains_adjacent_transition": False,
+            "ego_total_yaw_change_rad": math.radians(10.0),
+            "ego_maximum_yaw_excursion_rad": math.radians(10.0),
+            "ego_total_absolute_yaw_change_rad": math.radians(10.0),
             "natural_corridor": {
                 "turn_evidence_status": direction,
                 "reliable_directional_relations": [relation] if relation else [],

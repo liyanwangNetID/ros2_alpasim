@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from __future__ import annotations
+import json
 import tempfile
 import sys
 import unittest
@@ -27,12 +28,32 @@ class ReviewUtilityTests(unittest.TestCase):
     def test_discovery_and_window(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            camera = root / "camera" / "front_wide"
+            camera = root / "cameras" / "front_wide"
             camera.mkdir(parents=True)
+
+            rows = []
+
             for stamp in (100, 200, 300):
-                (camera / f"{stamp:010d}.jpg").write_bytes(b"x")
-            (root / "camera" / "other").mkdir()
-            (root / "camera" / "other" / "0000000250.jpg").write_bytes(b"x")
+                filename = f"{stamp:010d}.jpg"
+                (camera / filename).write_bytes(b"x")
+
+                rows.append(
+                    {
+                        "timestamp_ns": stamp,
+                        "image_path": filename,
+                    }
+                )
+
+            timestamp_path = camera / "timestamps.jsonl"
+
+            timestamp_path.write_text(
+                "".join(
+                    json.dumps(row) + "\n"
+                    for row in rows
+                ),
+                encoding="utf-8",
+            )
+
             images = discover_front_wide_images(root)
             self.assertEqual([item.stamp_ns for item in images], [100, 200, 300])
             selected = select_window(images, 150, 300)

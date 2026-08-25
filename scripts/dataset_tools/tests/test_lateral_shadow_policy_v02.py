@@ -33,7 +33,21 @@ class ShadowPolicyV02Tests(unittest.TestCase):
     def test_lane_change_to_turn_is_allowed(self):
         proposal = propose_lateral(
             frozen("change_lane_right"),
-            geometry(observed=[{"interpretation": "turn_left_candidate"}]),
+            geometry(
+                observed=[
+                    {
+                        "interpretation": "turn_left_candidate",
+                        "interpretation_reason": (
+                            "adjacent_target_is_not_parallel_"
+                            "downstream_corridor"
+                        ),
+                        "junction_evidence_level": "A",
+                        "source_heading_residual": {
+                            "ego_heading_change_deg": 16.0,
+                        },
+                    }
+                ]
+            ),
         )
         self.assertEqual(proposal["action"], "turn_left")
 

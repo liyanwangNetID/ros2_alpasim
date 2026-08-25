@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import math
 import sys
 import unittest
 from pathlib import Path
@@ -18,7 +19,27 @@ class Tests(unittest.TestCase):
   action,_=observed_proposal([{"interpretation":"turn_left_candidate"},{"interpretation":"keep_direction"}])
   self.assertEqual(action,"unknown")
  def test_in_progress_changes_keep(self):
-  proposal=propose_lateral(frozen("keep_direction"),{"observed_adjacent_transitions":[],"inferred_in_progress_action":"change_lane_left"})
+  geometry={
+   "observed_adjacent_transitions":[],
+   "in_progress_candidates":[{
+    "candidate":True,
+    "direction":"left",
+    "final_target_advantage_m":-1.0,
+    "directional_heading_progress_deg":5.0,
+   }],
+   "inferred_in_progress_action":"change_lane_left",
+  }
+  lateral={
+   "lateral":{
+    "ego_total_yaw_change_rad":math.radians(5.0),
+    "map_corridor_heading_change_rad":math.radians(1.0),
+   }
+  }
+  proposal=propose_lateral(
+   frozen("keep_direction"),
+   geometry,
+   lateral,
+  )
   self.assertEqual(proposal["action"],"change_lane_left")
  def test_unknown_frozen_preserved(self):
   proposal=propose_lateral(frozen("unknown","unknown"),{"observed_adjacent_transitions":[{"interpretation":"turn_right_candidate"}]})

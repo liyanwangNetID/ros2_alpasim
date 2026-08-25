@@ -15,17 +15,41 @@ from profile_meta_action_features import (
 )
 
 
-def point(stamp_ns, speed, acceleration=0.0):
+def point(stamp_ns, x, speed, acceleration=0.0):
     return {
-        "stamp": {"sec": stamp_ns // 1_000_000_000, "nanosec": stamp_ns % 1_000_000_000},
+        "stamp": {
+            "sec": stamp_ns // 1_000_000_000,
+            "nanosec": stamp_ns % 1_000_000_000,
+        },
+        "pose": {
+            "position": {
+                "x": x,
+                "y": 0.0,
+                "z": 0.0,
+            },
+            "orientation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0,
+                "w": 1.0,
+            },
+        },
         "speed": speed,
-        "linear_acceleration": {"x": acceleration, "y": 0.0, "z": 0.0},
+        "linear_acceleration": {
+            "x": acceleration,
+            "y": 0.0,
+            "z": 0.0,
+        },
     }
 
 
 class LongitudinalFeatureTests(unittest.TestCase):
     def test_acceleration_features(self):
-        points = [point(0, 1.0), point(1_000_000_000, 2.0), point(2_000_000_000, 3.0)]
+        points = [
+            point(0, 0.0, 1.0),
+            point(1_000_000_000, 1.0, 2.0),
+            point(2_000_000_000, 4.0, 3.0),
+        ]
         result = extract_longitudinal_features(points)
         self.assertEqual(result["speed_delta_mps"], 2.0)
         self.assertEqual(result["derived_mean_acceleration_mps2"], 1.0)
@@ -40,7 +64,9 @@ class LongitudinalFeatureTests(unittest.TestCase):
 
     def test_invalid_short_trajectory(self):
         with self.assertRaises(ValueError):
-            extract_longitudinal_features([point(0, 1.0)])
+            extract_longitudinal_features(
+                [point(0, 0.0, 1.0)]
+            )
 
 
 if __name__ == "__main__":
