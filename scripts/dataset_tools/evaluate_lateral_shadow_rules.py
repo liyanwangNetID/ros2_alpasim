@@ -17,7 +17,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
-VERSION = "0.2.1"
+VERSION = "0.2.2"
 ROOT = Path("/home/lab/data_from_alpasim")
 DEFAULT_LABEL_INPUT = ROOT / "annotations/v0.1-draft/meta_actions_v0.1.jsonl"
 DEFAULT_GEOMETRY_INPUT = (
@@ -150,6 +150,46 @@ def reviewed_in_progress_proposal(
     ]
 
 
+def reviewed_lane_change_to_turn_allowed(
+    old_action: str,
+    proposed_action: str,
+    geometry: Mapping[str, Any],
+) -> tuple[bool, list[str]]:
+    if not old_action.startswith("change_lane_"):
+        return True, []
+    if not proposed_action.startswith("turn_"):
+        return True, []
+
+    expected_interpretation = proposed_action + "_candidate"
+
+    for item in geometry.get("observed_adjacent_transitions", []):
+        if str(item.get("interpretation", "")) != expected_interpretation:
+            continue
+
+        junction_level = str(item.get("junction_evidence_level", "C"))
+        residual = item.get("source_heading_residual", {})
+        ego_heading_change_deg = residual.get("ego_heading_change_deg")
+
+        if junction_level not in {"A", "B"}:
+            continue
+        if not isinstance(ego_heading_change_deg, (int, float)):
+            continue
+        if abs(float(ego_heading_change_deg)) < 8.0:
+            continue
+
+        return True, [
+            "reviewed_lane_change_to_turn_geometry",
+            "junction_level_a_or_b",
+            "post_transition_ego_heading_change_at_least_8deg",
+        ]
+
+    return False, [
+        "lane_change_to_turn_review_gate_not_met",
+        "requires_junction_level_a_or_b",
+        "requires_post_transition_ego_heading_change_at_least_8deg",
+    ]
+
+
 def propose_lateral(
     frozen: Mapping[str, Any],
     geometry: Mapping[str, Any],
@@ -182,10 +222,22 @@ def propose_lateral(
                 "reasons": ["lane_change_to_keep_downgrade_disabled_after_review"],
             }
 
+        turn_allowed, turn_gate_reasons = reviewed_lane_change_to_turn_allowed(
+            old_action,
+            observed_action,
+            geometry,
+        )
+        if not turn_allowed:
+            return {
+                "action": old_action,
+                "decision_source": "preserve_frozen_lane_change_against_weak_turn_revision",
+                "reasons": turn_gate_reasons,
+            }
+
         return {
             "action": observed_action,
             "decision_source": "observed_adjacent_geometry",
-            "reasons": observed_reasons,
+            "reasons": observed_reasons + turn_gate_reasons,
         }
 
     reviewed_action, reviewed_reasons = reviewed_in_progress_proposal(
@@ -304,6 +356,11 @@ def main() -> int:
             "minimum_final_target_advantage_m": -2.0,
             "maximum_absolute_directional_heading_progress_deg": 10.0,
             "minimum_absolute_ego_to_map_heading_residual_deg": 2.0,
+        },
+        "reviewed_lane_change_to_turn_policy": {
+            "allowed_junction_levels": ["A", "B"],
+            "minimum_absolute_post_transition_ego_heading_change_deg": 8.0,
+            "otherwise": "preserve_frozen_lane_change",
         },
         "anchor_count": len(output),
         "changed_count": sum(item["changed"] for item in output),

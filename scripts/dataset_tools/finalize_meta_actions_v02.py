@@ -18,8 +18,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
 
-VERSION = "0.2.0"
-RULE_VERSION = "meta_action_rules_v0.2"
+VERSION = "0.2.1"
+RULE_VERSION = "meta_action_rules_v0.2.1"
 ROOT = Path("/home/lab/data_from_alpasim")
 DEFAULT_V01_INPUT = ROOT / "annotations/v0.1-draft/meta_actions_v0.1.jsonl"
 DEFAULT_SHADOW_INPUT = ROOT / "reports/lateral_shadow_evaluation_v0.1.jsonl"
@@ -208,7 +208,15 @@ def main() -> int:
         ],
         "frozen_policy": {
             "lane_change_to_keep_direction": "preserve_v0.1_lane_change",
-            "lane_change_to_turn": "apply_reviewed_shadow_geometry",
+            "lane_change_to_turn": {
+                "apply_reviewed_shadow_geometry": True,
+                "allowed_junction_levels": [
+                    "A",
+                    "B"
+                ],
+                "minimum_absolute_post_transition_ego_heading_change_deg": 8.0,
+                "otherwise": "preserve_v0.1_lane_change"
+            },
             "keep_direction_to_lane_change": {
                 "apply_reviewed_shadow_geometry": True,
                 "minimum_final_target_advantage_m": -2.0,
