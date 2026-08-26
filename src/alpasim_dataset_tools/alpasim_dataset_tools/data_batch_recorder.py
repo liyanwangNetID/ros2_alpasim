@@ -369,7 +369,7 @@ class DatasetBatchRecorder(Node):
         super().__init__("alpasim_data_batch_recorder")
 
         self.declare_parameter(
-            "output_root", "/home/lab/data_from_alpasim"
+            "output_root", "/home/lab/data_all_alpasim"
         )
         self.declare_parameter("clip_prefix", "test_clip_")
         self.declare_parameter("jpeg_quality", 90)
