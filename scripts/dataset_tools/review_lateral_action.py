@@ -28,7 +28,7 @@ from typing import Any, Iterable, Mapping, Sequence
 ROOT = Path("/home/lab/data_from_alpasim")
 DEFAULT_LATERAL_FEATURES = (
     ROOT / "annotations" / "v0.1-draft" / "intermediate"
-    / "lateral_action_features_v0.2.jsonl"
+    / "lateral_action_features_v0.3.jsonl"
 )
 DEFAULT_SCAN_CASES = ROOT / "reports" / "lateral_threshold_scan_cases_v0.1.jsonl"
 DEFAULT_OUTPUT_DIRECTORY = ROOT / "reports" / "lateral_action_reviews"
