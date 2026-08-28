@@ -215,8 +215,13 @@ def _path_points(
     merged: list[Point2D] = []
     for lane_id in lane_ids:
         points = list(vector_map.require_lane(lane_id).centerline)
-        if merged and points and merged[-1] == points[0]:
-            points = points[1:]
+        if merged and points:
+            boundary_gap_m = math.hypot(
+                points[0].x - merged[-1].x,
+                points[0].y - merged[-1].y,
+            )
+            if boundary_gap_m <= 0.05:
+                points = points[1:]
         merged.extend(points)
     return _truncate_polyline(merged, maximum_distance_m)
 

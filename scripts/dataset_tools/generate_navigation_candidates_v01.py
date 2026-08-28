@@ -17,6 +17,7 @@ from navigation_rules_v01 import (
     OUTPUT_FORMAT_VERSION,
     RULE_VERSION,
     DIRECTION_GEOMETRY_MINIMUM_DEG,
+    ROAD_LEVEL_INTERSECTION_DIRECTION_THRESHOLD_DEG,
     MAXIMUM_UPCOMING_DISTANCE_M,
     MINIMUM_UPCOMING_DISTANCE_M,
     UPCOMING_TIME_HORIZON_SEC,
@@ -29,6 +30,7 @@ ANN = ROOT / "annotations/v0.1-draft"
 DEFAULT_KEYFRAMES = ANN / "keyframes.jsonl"
 DEFAULT_ROUTE_FEATURES = ANN / "intermediate/navigation_route_features_v0.1.jsonl"
 DEFAULT_BRANCH_FEATURES = ANN / "intermediate/navigation_branch_context_v0.1.jsonl"
+DEFAULT_ROAD_LEVEL_FEATURES = ANN / "intermediate/road_level_navigation_features_v0.1.jsonl"
 DEFAULT_OUTPUT = ANN / "intermediate/navigation_candidates_v0.1.jsonl"
 DEFAULT_SUMMARY = ROOT / "reports/navigation_candidate_summary_v0.1.json"
 
@@ -74,6 +76,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--keyframe-input", type=Path, default=DEFAULT_KEYFRAMES)
     parser.add_argument("--route-feature-input", type=Path, default=DEFAULT_ROUTE_FEATURES)
     parser.add_argument("--branch-feature-input", type=Path, default=DEFAULT_BRANCH_FEATURES)
+    parser.add_argument("--road-level-feature-input", type=Path, default=DEFAULT_ROAD_LEVEL_FEATURES)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--summary-output", type=Path, default=DEFAULT_SUMMARY)
     parser.add_argument("--force", action="store_true")
@@ -85,8 +88,13 @@ def main() -> int:
     keyframes = read_index(args.keyframe_input)
     route_features = read_index(args.route_feature_input)
     branch_features = read_index(args.branch_feature_input)
+    road_level_features = read_index(args.road_level_feature_input)
     expected = set(keyframes)
-    if set(route_features) != expected or set(branch_features) != expected:
+    if (
+        set(route_features) != expected
+        or set(branch_features) != expected
+        or set(road_level_features) != expected
+    ):
         raise ValueError("Navigation input Anchor sets differ")
 
     output = []
@@ -107,8 +115,9 @@ def main() -> int:
         keyframe = keyframes[anchor_id]
         route = route_features[anchor_id]
         branch = branch_features[anchor_id]
-        require_identity(anchor_id, keyframe, route, branch)
-        navigation = classify_navigation(route, branch)
+        road_level = road_level_features[anchor_id]
+        require_identity(anchor_id, keyframe, route, branch, road_level)
+        navigation = classify_navigation(route, branch, road_level)
         if navigation["action"] not in VALID_ACTIONS:
             raise ValueError(f"{anchor_id}: invalid Navigation action")
         if navigation["action"] == "unknown" and navigation["text"] is not None:
@@ -125,6 +134,7 @@ def main() -> int:
             "source_versions": {
                 "route_feature_format_version": route.get("feature_format_version"),
                 "branch_context_format_version": branch.get("feature_format_version"),
+                "road_level_feature_format_version": road_level.get("feature_format_version"),
             },
         }
         output.append(record)
@@ -152,6 +162,7 @@ def main() -> int:
         "minimum_upcoming_distance_m": MINIMUM_UPCOMING_DISTANCE_M,
         "maximum_upcoming_distance_m": MAXIMUM_UPCOMING_DISTANCE_M,
         "direction_geometry_minimum_deg": DIRECTION_GEOMETRY_MINIMUM_DEG,
+        "road_level_intersection_direction_threshold_deg": ROAD_LEVEL_INTERSECTION_DIRECTION_THRESHOLD_DEG,
         "action_counts": dict(action_counts),
         "quality_status_counts": dict(quality_counts),
         "decision_source_counts": dict(source_counts),

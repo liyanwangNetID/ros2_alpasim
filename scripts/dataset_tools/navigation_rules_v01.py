@@ -5,13 +5,14 @@ from __future__ import annotations
 import math
 from typing import Any, Mapping
 
-RULE_VERSION = "navigation_rules_v0.1.3-candidate"
-GENERATOR_VERSION = "0.1.3"
+RULE_VERSION = "navigation_rules_v0.1.4-candidate"
+GENERATOR_VERSION = "0.1.4"
 OUTPUT_FORMAT_VERSION = "0.1-draft"
 UPCOMING_TIME_HORIZON_SEC = 10.0
 MINIMUM_UPCOMING_DISTANCE_M = 15.0
 MAXIMUM_UPCOMING_DISTANCE_M = 80.0
 DIRECTION_GEOMETRY_MINIMUM_DEG = 5.0
+ROAD_LEVEL_INTERSECTION_DIRECTION_THRESHOLD_DEG = 20.0
 VALID_ACTIONS = {"straight", "left", "right", "unknown"}
 
 
@@ -51,7 +52,9 @@ def _is_upcoming_intersection(
 
 
 def classify_navigation(
-    route_features: Mapping[str, Any], branch_features: Mapping[str, Any],
+    route_features: Mapping[str, Any],
+    branch_features: Mapping[str, Any],
+    road_level_features: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     if str(route_features.get("quality_status")) != "usable":
         return _unknown("navigation_route_geometry_not_usable")
@@ -106,17 +109,86 @@ def classify_navigation(
 
     if relation == "actual_successor_not_candidate":
         return _unknown("route_successor_not_in_branch_candidates")
-    if reliability != "reliable":
-        return _unknown("first_observed_branch_not_reliable")
-
     if relation == "natural_continuation":
+        natural_successor = branch.get(
+            "natural_successor_lane_id"
+        )
+        route_successor = branch.get(
+            "route_successor_lane_id"
+        )
+
+        if (
+            natural_successor is not None
+            and route_successor is not None
+            and str(natural_successor) != str(route_successor)
+        ):
+            return _unknown(
+                "inconsistent_natural_continuation_successor_identity"
+            )
+
+        if not upcoming_intersection:
+            return {
+                "action": "straight",
+                "text": "Continue along the road.",
+                "quality_status": "usable",
+                "decision_source": "route_natural_continuation",
+                "reasons": ["route_selects_natural_successor", "no_upcoming_intersection"],
+            }
+        road_geometry = (
+            road_level_features.get("road_level_route_geometry", {})
+            if isinstance(road_level_features, Mapping)
+            else {}
+        )
+        road_change = (
+            road_geometry.get("route_road_level_heading_change_deg")
+            if isinstance(road_geometry, Mapping)
+            and str(road_geometry.get("status")) == "available"
+            else None
+        )
+        if isinstance(road_change, (int, float)):
+            if float(road_change) > ROAD_LEVEL_INTERSECTION_DIRECTION_THRESHOLD_DEG:
+                action = "left"
+            elif float(road_change) < -ROAD_LEVEL_INTERSECTION_DIRECTION_THRESHOLD_DEG:
+                action = "right"
+            else:
+                if reliability != "reliable":
+                    return _unknown(
+                        "first_observed_branch_not_reliable",
+                        "road_level_direction_below_intersection_threshold",
+                    )
+                action = "straight"
+            return {
+                "action": action,
+                "text": (
+                    "Continue straight through the upcoming intersection."
+                    if action == "straight"
+                    else f"Turn {action} at the upcoming intersection."
+                ),
+                "quality_status": "usable",
+                "decision_source": f"road_level_natural_continuation_intersection_{action}",
+                "reasons": [
+                    "route_selects_natural_successor",
+                    "upcoming_intersection_detected",
+                    "road_level_direction_available",
+                ],
+            }
+        if reliability != "reliable":
+            return _unknown(
+                "first_observed_branch_not_reliable",
+                "road_level_direction_geometry_not_available",
+            )
         return {
             "action": "straight",
-            "text": "Continue straight through the upcoming intersection." if upcoming_intersection else "Continue along the road.",
+            "text": "Continue straight through the upcoming intersection.",
             "quality_status": "usable",
-            "decision_source": "route_natural_continuation_upcoming_intersection" if upcoming_intersection else "route_natural_continuation",
-            "reasons": ["route_selects_natural_successor"],
+            "decision_source": "route_natural_continuation_upcoming_intersection_legacy_fallback",
+            "reasons": [
+                "route_selects_natural_successor",
+                "road_level_direction_geometry_not_available",
+            ],
         }
+    if reliability != "reliable":
+        return _unknown("first_observed_branch_not_reliable")
 
     signed_change = route_geometry.get("route_signed_heading_change_rad")
     if not isinstance(signed_change, (int, float)):

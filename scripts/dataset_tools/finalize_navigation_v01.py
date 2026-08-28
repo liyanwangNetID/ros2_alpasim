@@ -18,9 +18,9 @@ DEFAULT_KEYFRAMES = ANN / 'keyframes.jsonl'
 DEFAULT_INPUT = ANN / 'intermediate/navigation_candidates_v0.1.jsonl'
 DEFAULT_OUTPUT = ANN / 'navigation.jsonl'
 DEFAULT_SUMMARY = ROOT / 'reports/navigation_generation_summary_v0.1.json'
-EXPECTED_GENERATOR_VERSION = '0.1.3'
-EXPECTED_RULE_VERSION = 'navigation_rules_v0.1.3-candidate'
-FINAL_RULE_VERSION = 'navigation_rules_v0.1.3'
+EXPECTED_GENERATOR_VERSION = '0.1.4'
+EXPECTED_RULE_VERSION = 'navigation_rules_v0.1.4-candidate'
+FINAL_RULE_VERSION = 'navigation_rules_v0.1.4'
 
 
 def read_index(path: Path) -> dict[str, dict[str, Any]]:
