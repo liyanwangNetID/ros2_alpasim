@@ -328,6 +328,15 @@ class DrivingClipReader:
             ),
         )
 
+    def get_ego_state_at(self, anchor_ns: int) -> EgoStateSample | None:
+        """Return the interpolated Ego state at one timestamp."""
+        return self._interpolate_ego(anchor_ns)
+
+    def get_ego_pose_at(self, anchor_ns: int) -> Pose2D | None:
+        """Return the interpolated map-frame Ego pose at one timestamp."""
+        sample = self.get_ego_state_at(anchor_ns)
+        return sample.pose if sample is not None else None
+
     def get_ego_history(
         self,
         anchor_ns: int,
