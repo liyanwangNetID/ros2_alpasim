@@ -133,6 +133,50 @@ def classify_lateral(lateral: Mapping[str, Any]) -> dict[str, Any]:
     relative_metrics = branch_relative_metrics(lateral)
     if natural.get('turn_evidence_status') == 'directional_branch_observed' and relative_metrics is not None and (relative_metrics['maximum_directional_progress_deg'] >= TURN_MIN_DIRECTIONAL_PROGRESS_DEG) and (relative_metrics['maximum_absolute_relative_heading_deg'] >= TURN_MIN_ABSOLUTE_RELATIVE_DEVIATION_DEG):
         direction = str(relative_metrics['direction'])
+        expected_sign = 1.0 if direction == 'left' else -1.0
+
+        ego_total_deg = math.degrees(
+            float(lateral['ego_total_yaw_change_rad'])
+        )
+        path_signed_deg = math.degrees(
+            float(
+                lateral[
+                    'filtered_path_signed_heading_change_rad'
+                ]
+            )
+        )
+        final_relative_y_m = float(
+            lateral['final_relative_y_m']
+        )
+
+        if (
+            expected_sign * ego_total_deg < -2.0
+            and expected_sign * path_signed_deg < -2.0
+            and expected_sign * final_relative_y_m < -1.0
+        ):
+            conflict_metrics = dict(relative_metrics)
+            conflict_metrics.update({
+                'ego_total_yaw_change_deg': ego_total_deg,
+                'filtered_path_signed_heading_change_deg': (
+                    path_signed_deg
+                ),
+                'final_relative_y_m': final_relative_y_m,
+            })
+
+            return {
+                'action': 'unknown',
+                'quality_status': 'unknown',
+                'reasons': [
+                    'branch_relative_direction_conflicts_with_ego_yaw',
+                    'branch_relative_direction_conflicts_with_filtered_path',
+                    'branch_relative_direction_conflicts_with_lateral_offset',
+                ],
+                'decision_stage': (
+                    'branch_relative_direction_consistency_guard'
+                ),
+                'metrics': conflict_metrics,
+            }
+
         return {'action': f'turn_{direction}', 'quality_status': 'usable', 'reasons': [f'{direction}_of_natural_branch', 'relative_turn_thresholds_passed'], 'decision_stage': 'branch_relative_turn', 'metrics': relative_metrics}
     fallback_reasons = list(natural.get('fallback_reasons', []))
     if natural.get('turn_evidence_status') == 'fallback_keep_direction':

@@ -26,6 +26,10 @@ from natural_lane_corridor import (
     build_natural_lane_corridor,
     compare_actual_lane_sequence,
 )
+from natural_corridor_family_guard_v01 import (
+    FAMILY_GUARD_VERSION,
+    evaluate_direction_family_guard,
+)
 from navigation_map_context_v01 import local_route_to_map_trajectory
 from navigation_route_features_v01 import valid_local_points
 from vector_map_reader import VectorMapReader
@@ -36,7 +40,7 @@ DEFAULT_KEYFRAMES = ANN / 'keyframes.jsonl'
 DEFAULT_OUTPUT = ANN / 'intermediate/navigation_branch_context_v0.1.jsonl'
 DEFAULT_SUMMARY = DATA_ROOT / 'reports/navigation_branch_context_summary_v0.1.json'
 FORMAT_VERSION = '0.1-draft'
-PROFILER_VERSION = '0.1.0'
+PROFILER_VERSION = '0.1.1'
 
 
 def read_records(path: Path) -> list[dict[str, Any]]:
@@ -190,15 +194,55 @@ def main() -> int:
                 distance = None
                 if transition is not None:
                     distance = distances[min(max(transition.source_point_index, 0), len(distances) - 1)]
+                family_guard = evaluate_direction_family_guard(
+                    vector_map,
+                    branch_lane_id=comparison.branch_lane_id,
+                    natural_successor_lane_id=(
+                        comparison.natural_successor_lane_id
+                    ),
+                    route_successor_lane_id=(
+                        comparison.actual_successor_lane_id
+                    ),
+                    raw_relation=(
+                        comparison.actual_relation_to_natural
+                    ),
+                    incoming_heading_rad=(
+                        decision.incoming_heading_rad
+                    ),
+                    config=NaturalCorridorConfig(),
+                )
+
                 observed.append({
                     'branch_lane_id': comparison.branch_lane_id,
                     'route_distance_m': distance,
                     'natural_successor_lane_id': comparison.natural_successor_lane_id,
                     'route_successor_lane_id': comparison.actual_successor_lane_id,
-                    'route_relation_to_natural': comparison.actual_relation_to_natural,
+                    'raw_route_relation_to_natural': (
+                        comparison.actual_relation_to_natural
+                    ),
+                    'route_relation_to_natural': family_guard.relation,
                     'reliability_status': reliability,
                     'reliability_reasons': list(reliability_reasons),
                     'score_margin': score_margin,
+                    'family_guard_version': FAMILY_GUARD_VERSION,
+                    'family_guard_status': family_guard.status,
+                    'family_guard_reason': family_guard.reason,
+                    'family_relationship': (
+                        family_guard.family_relationship
+                    ),
+                    'family_guard_observations': [
+                        {
+                            'horizon_m': observation.horizon_m,
+                            'natural_family': (
+                                observation.natural_family
+                            ),
+                            'route_family': (
+                                observation.route_family
+                            ),
+                        }
+                        for observation
+                        in family_guard.observations
+                    ],
                 })
             observed.sort(key=lambda item: (float('inf') if item['route_distance_m'] is None else item['route_distance_m'], item['branch_lane_id']))
             first_observed = observed[0] if observed else None

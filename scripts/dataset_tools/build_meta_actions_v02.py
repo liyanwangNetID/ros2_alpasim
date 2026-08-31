@@ -43,10 +43,10 @@ DEFAULT_SUMMARY = ROOT / "reports/meta_action_generation_summary_v0.2.json"
 
 EXPECTED_ANCHOR_COUNT = 10231
 EXPECTED_LATERAL_COUNTS = {
-    "keep_direction": 9525,
-    "unknown": 385,
-    "turn_left": 10,
-    "turn_right": 12,
+    "keep_direction": 9472,
+    "unknown": 387,
+    "turn_left": 16,
+    "turn_right": 57,
     "change_lane_left": 155,
     "change_lane_right": 144,
 }
@@ -57,7 +57,7 @@ EXPECTED_LONGITUDINAL_COUNTS = {
     "decelerate": 1810,
     "stop": 899,
 }
-EXPECTED_QUALITY_COUNTS = {"usable": 9466, "unknown": 765}
+EXPECTED_QUALITY_COUNTS = {"usable": 9465, "unknown": 766}
 
 
 def step4_feature_commands() -> tuple[tuple[str, ...], ...]:

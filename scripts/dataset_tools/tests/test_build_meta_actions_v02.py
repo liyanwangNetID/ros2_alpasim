@@ -16,10 +16,10 @@ class ProductionBuilderTests(unittest.TestCase):
         validate_distribution(
             anchor_count=10231,
             lateral_counts=Counter({
-                "keep_direction": 9525,
-                "unknown": 385,
-                "turn_left": 10,
-                "turn_right": 12,
+                "keep_direction": 9472,
+                "unknown": 387,
+                "turn_left": 16,
+                "turn_right": 57,
                 "change_lane_left": 155,
                 "change_lane_right": 144,
             }),
@@ -30,7 +30,7 @@ class ProductionBuilderTests(unittest.TestCase):
                 "decelerate": 1810,
                 "stop": 899,
             }),
-            quality_counts=Counter({"usable": 9466, "unknown": 765}),
+            quality_counts=Counter({"usable": 9465, "unknown": 766}),
             strict=True,
         )
 
