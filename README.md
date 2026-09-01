@@ -1034,6 +1034,8 @@ uv run --project src/driver python -m alpasim_driver.main \
 
 ## For Record Data
 "$ALPASIM_ROS2_WS/scripts/run_gt_dataset_streaming.sh"
+/home/lab/alpasim_ros2_ws/scripts/run_gt_dataset_streaming_all_unique.sh 2054 2369
+
 
 ## Run One Scene
 uv run --project src/wizard alpasim_wizard \
