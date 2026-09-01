@@ -18,11 +18,23 @@ from keyframe_event_dedup_rules_v01 import (
     RULE_VERSION,
     normalize_anchor_events,
 )
+from project_paths import (
+    ALPASIM_DATA_ROOT,
+    INTERMEDIATE_ROOT,
+    REPORT_ROOT,
+)
 
-ROOT = Path("/home/lab/data_from_alpasim")
-DEFAULT_INPUT = ROOT / "annotations/v0.1-draft/intermediate/keyframe_event_candidates_v0.1.jsonl"
-DEFAULT_OUTPUT = ROOT / "annotations/v0.1-draft/intermediate/keyframe_event_candidates_deduplicated_v0.1.jsonl"
-DEFAULT_SUMMARY = ROOT / "reports/keyframe_event_deduplication_summary_v0.1.json"
+ROOT = ALPASIM_DATA_ROOT
+DEFAULT_INPUT = (
+    INTERMEDIATE_ROOT / "keyframe_event_candidates_v0.1.jsonl"
+)
+DEFAULT_OUTPUT = (
+    INTERMEDIATE_ROOT
+    / "keyframe_event_candidates_deduplicated_v0.1.jsonl"
+)
+DEFAULT_SUMMARY = (
+    REPORT_ROOT / "keyframe_event_deduplication_summary_v0.1.json"
+)
 
 
 def atomic_write(path: Path, content: str, force: bool) -> None:

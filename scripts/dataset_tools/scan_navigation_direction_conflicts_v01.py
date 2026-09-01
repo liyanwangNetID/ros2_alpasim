@@ -12,10 +12,23 @@ from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
 
-ROOT = Path('/home/lab/data_from_alpasim/annotations/v0.1-draft')
-NAVIGATION_PATH = ROOT / 'intermediate/navigation_candidates_v0.1.jsonl'
-ROUTE_FEATURE_PATH = ROOT / 'intermediate/navigation_route_features_v0.1.jsonl'
-BRANCH_FEATURE_PATH = ROOT / 'intermediate/navigation_branch_context_v0.1.jsonl'
+from project_paths import (
+    ANNOTATION_ROOT,
+    INTERMEDIATE_ROOT,
+)
+
+ROOT = ANNOTATION_ROOT
+NAVIGATION_PATH = (
+    INTERMEDIATE_ROOT / 'navigation_candidates_v0.1.jsonl'
+)
+ROUTE_FEATURE_PATH = (
+    INTERMEDIATE_ROOT
+    / 'navigation_route_features_v0.1.jsonl'
+)
+BRANCH_FEATURE_PATH = (
+    INTERMEDIATE_ROOT
+    / 'navigation_branch_context_v0.1.jsonl'
+)
 
 
 def read_index(path: Path) -> dict[str, dict[str, Any]]:

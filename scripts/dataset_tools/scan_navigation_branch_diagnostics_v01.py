@@ -7,9 +7,11 @@ from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
 
-PATH = Path(
-    "/home/lab/data_from_alpasim/annotations/v0.1-draft/"
-    "intermediate/navigation_branch_context_v0.1.jsonl"
+from project_paths import INTERMEDIATE_ROOT
+
+PATH = (
+    INTERMEDIATE_ROOT
+    / "navigation_branch_context_v0.1.jsonl"
 )
 
 

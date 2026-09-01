@@ -12,9 +12,12 @@ import unittest
 from pathlib import Path
 
 
+
 MODULE_DIRECTORY = Path(__file__).resolve().parent.parent
 if str(MODULE_DIRECTORY) not in sys.path:
     sys.path.insert(0, str(MODULE_DIRECTORY))
+
+from project_paths import ALPASIM_DATA_ROOT
 
 from clip_reader import (  # noqa: E402
     CAMERA_NAMES,
@@ -250,7 +253,7 @@ class SyntheticClipReaderTests(unittest.TestCase):
 
 class RealClipSmokeTest(unittest.TestCase):
     def test_real_clip_001(self) -> None:
-        clip = Path("/home/lab/data_from_alpasim/test_clip_001")
+        clip = ALPASIM_DATA_ROOT / "test_clip_001"
         if not clip.is_dir():
             self.skipTest("real test_clip_001 is not available")
         reader = DrivingClipReader(clip)

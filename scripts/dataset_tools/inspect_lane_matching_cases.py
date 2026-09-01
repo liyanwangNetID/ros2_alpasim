@@ -24,26 +24,24 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
+from project_paths import (
+    ALPASIM_DATA_ROOT,
+    INTERMEDIATE_ROOT,
+    REPORT_ROOT,
+)
+
 
 SCRIPT_VERSION = "0.1.0"
 DIAGNOSTIC_FORMAT_VERSION = "0.1-draft"
-DEFAULT_DATASET_ROOT = Path("/home/lab/data_from_alpasim")
+DEFAULT_DATASET_ROOT = ALPASIM_DATA_ROOT
 DEFAULT_FEATURE_INPUT = (
-    DEFAULT_DATASET_ROOT
-    / "annotations"
-    / "v0.1-draft"
-    / "intermediate"
-    / "lane_matching_features_v0.1.jsonl"
+    INTERMEDIATE_ROOT / "lane_matching_features_v0.1.jsonl"
 )
 DEFAULT_SUMMARY_OUTPUT = (
-    DEFAULT_DATASET_ROOT
-    / "reports"
-    / "lane_matching_case_summary_v0.1.json"
+    REPORT_ROOT / "lane_matching_case_summary_v0.1.json"
 )
 DEFAULT_CASE_OUTPUT = (
-    DEFAULT_DATASET_ROOT
-    / "reports"
-    / "lane_matching_cases_v0.1.jsonl"
+    REPORT_ROOT / "lane_matching_cases_v0.1.jsonl"
 )
 
 CATEGORY_ORDER = (

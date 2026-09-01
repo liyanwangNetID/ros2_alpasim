@@ -29,20 +29,28 @@ if str(MODULE_DIRECTORY) not in sys.path:
 
 from clip_reader import DrivingClipReader, stamp_mapping_to_ns  # noqa: E402
 from coordinate_utils import pose2d_from_pose_mapping  # noqa: E402
+from project_paths import (  # noqa: E402
+    ALPASIM_DATA_ROOT,
+    ANNOTATION_ROOT,
+    INTERMEDIATE_ROOT,
+    REPORT_ROOT,
+)
 
 SCRIPT_VERSION = "0.2.0"
 FEATURE_FORMAT_VERSION = "0.2-draft"
-ROOT = Path("/home/lab/data_from_alpasim")
-DEFAULT_ANCHORS = ROOT / "annotations" / "v0.1-draft" / "candidate_anchors.jsonl"
+ROOT = ALPASIM_DATA_ROOT
+DEFAULT_ANCHORS = (
+    ANNOTATION_ROOT / "candidate_anchors.jsonl"
+)
 DEFAULT_LANE_FEATURES = (
-    ROOT / "annotations" / "v0.1-draft" / "intermediate"
-    / "lane_matching_features_v0.2.jsonl"
+    INTERMEDIATE_ROOT / "lane_matching_features_v0.2.jsonl"
 )
 DEFAULT_OUTPUT = (
-    ROOT / "annotations" / "v0.1-draft" / "intermediate"
-    / "meta_action_features_v0.2.jsonl"
+    INTERMEDIATE_ROOT / "meta_action_features_v0.2.jsonl"
 )
-DEFAULT_SUMMARY = ROOT / "reports" / "meta_action_feature_summary_v0.2.json"
+DEFAULT_SUMMARY = (
+    REPORT_ROOT / "meta_action_feature_summary_v0.2.json"
+)
 
 
 def read_jsonl(path: Path) -> list[dict[str, Any]]:

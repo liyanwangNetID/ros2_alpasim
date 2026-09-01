@@ -38,11 +38,14 @@ from natural_lane_corridor import (  # noqa: E402
     recover_boundary_branch_comparisons,
 )
 from vector_map_reader import VectorMapReader  # noqa: E402
+from project_paths import (  # noqa: E402
+    ALPASIM_DATA_ROOT,
+    INTERMEDIATE_ROOT,
+)
 
-ROOT = Path("/home/lab/data_from_alpasim")
+ROOT = ALPASIM_DATA_ROOT
 DEFAULT_LANE_FEATURES = (
-    ROOT / "annotations" / "v0.1-draft" / "intermediate"
-    / "lane_matching_features_v0.2.jsonl"
+    INTERMEDIATE_ROOT / "lane_matching_features_v0.2.jsonl"
 )
 
 

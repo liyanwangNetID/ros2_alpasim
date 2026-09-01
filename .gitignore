@@ -11,3 +11,6 @@ __pycache__/
 # 忽略本地 IDE 設定（可選）
 .vscode/
 .idea/
+
+# Machine-local path configuration
+config/local_paths.env

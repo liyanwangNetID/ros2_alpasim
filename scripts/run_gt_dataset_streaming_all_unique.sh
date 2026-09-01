@@ -12,7 +12,14 @@
 set -u
 set -o pipefail
 
-REPO_DIR="/home/lab/alpasim"
+SCRIPT_DIRECTORY="$(
+    cd "$(dirname "${BASH_SOURCE[0]}")" &&
+    pwd
+)"
+
+source "${SCRIPT_DIRECTORY}/load_local_paths.sh"
+
+REPO_DIR="${ALPASIM_ROOT}"
 MANIFEST_CSV="${REPO_DIR}/data/scenes/all_unique_scenes.csv"
 
 START_INDEX="${1:-1}"

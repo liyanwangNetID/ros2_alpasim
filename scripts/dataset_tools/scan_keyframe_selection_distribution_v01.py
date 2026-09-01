@@ -6,12 +6,20 @@ import json
 from collections import Counter, defaultdict
 from pathlib import Path
 
-ROOT = Path("/home/lab/data_from_alpasim/annotations/v0.1-draft")
-CANDIDATE_PATH = ROOT / "candidate_anchors.jsonl"
-META_PATH = ROOT / "meta_actions_v0.2.jsonl"
+from project_paths import (
+    ANNOTATION_ROOT,
+    INTERMEDIATE_ROOT,
+)
+
+ROOT = ANNOTATION_ROOT
+CANDIDATE_PATH = (
+    ANNOTATION_ROOT / "candidate_anchors.jsonl"
+)
+META_PATH = (
+    ANNOTATION_ROOT / "meta_actions_v0.2.jsonl"
+)
 EVENT_PATH = (
-    ROOT
-    / "intermediate"
+    INTERMEDIATE_ROOT
     / "keyframe_event_candidates_deduplicated_v0.1.jsonl"
 )
 

@@ -18,16 +18,35 @@ from keyframe_event_rules_v01 import (
     RULE_VERSION,
     detect_anchor_events,
 )
+from project_paths import (
+    ALPASIM_DATA_ROOT,
+    ANNOTATION_ROOT,
+    INTERMEDIATE_ROOT,
+    REPORT_ROOT,
+)
 
-ROOT = Path("/home/lab/data_from_alpasim")
-ANNOTATION_ROOT = ROOT / "annotations/v0.1-draft"
-DEFAULT_CANDIDATE_INPUT = ANNOTATION_ROOT / "candidate_anchors.jsonl"
-DEFAULT_META_INPUT = ANNOTATION_ROOT / "meta_actions_v0.2.jsonl"
-DEFAULT_LATERAL_INPUT = ANNOTATION_ROOT / "intermediate/lateral_action_features_v0.3.jsonl"
-DEFAULT_LONGITUDINAL_INPUT = ANNOTATION_ROOT / "intermediate/meta_action_features_v0.2.jsonl"
-DEFAULT_GEOMETRY_INPUT = ANNOTATION_ROOT / "intermediate/lane_change_geometry_features_v0.1.jsonl"
-DEFAULT_OUTPUT = ANNOTATION_ROOT / "intermediate/keyframe_event_candidates_v0.1.jsonl"
-DEFAULT_SUMMARY = ROOT / "reports/keyframe_event_candidate_summary_v0.1.json"
+ROOT = ALPASIM_DATA_ROOT
+DEFAULT_CANDIDATE_INPUT = (
+    ANNOTATION_ROOT / "candidate_anchors.jsonl"
+)
+DEFAULT_META_INPUT = (
+    ANNOTATION_ROOT / "meta_actions_v0.2.jsonl"
+)
+DEFAULT_LATERAL_INPUT = (
+    INTERMEDIATE_ROOT / "lateral_action_features_v0.3.jsonl"
+)
+DEFAULT_LONGITUDINAL_INPUT = (
+    INTERMEDIATE_ROOT / "meta_action_features_v0.2.jsonl"
+)
+DEFAULT_GEOMETRY_INPUT = (
+    INTERMEDIATE_ROOT / "lane_change_geometry_features_v0.1.jsonl"
+)
+DEFAULT_OUTPUT = (
+    INTERMEDIATE_ROOT / "keyframe_event_candidates_v0.1.jsonl"
+)
+DEFAULT_SUMMARY = (
+    REPORT_ROOT / "keyframe_event_candidate_summary_v0.1.json"
+)
 
 
 def read_jsonl_index(path: Path) -> dict[str, dict[str, Any]]:

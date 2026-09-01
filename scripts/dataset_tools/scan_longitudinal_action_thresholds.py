@@ -30,7 +30,9 @@ from typing import Any, Mapping, Sequence
 
 SCRIPT_VERSION = "0.1.0"
 SCAN_FORMAT_VERSION = "0.1-draft"
-ROOT = Path("/home/lab/data_from_alpasim")
+from project_paths import ALPASIM_DATA_ROOT
+
+ROOT = ALPASIM_DATA_ROOT
 DEFAULT_INPUT = (
     ROOT / "annotations" / "v0.1-draft" / "intermediate"
     / "meta_action_features_v0.1.jsonl"

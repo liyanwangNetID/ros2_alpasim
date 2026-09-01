@@ -25,13 +25,22 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
-ROOT = Path("/home/lab/data_from_alpasim")
-DEFAULT_LATERAL_FEATURES = (
-    ROOT / "annotations" / "v0.1-draft" / "intermediate"
-    / "lateral_action_features_v0.3.jsonl"
+from project_paths import (
+    ALPASIM_DATA_ROOT,
+    INTERMEDIATE_ROOT,
+    REPORT_ROOT,
 )
-DEFAULT_SCAN_CASES = ROOT / "reports" / "lateral_threshold_scan_cases_v0.1.jsonl"
-DEFAULT_OUTPUT_DIRECTORY = ROOT / "reports" / "lateral_action_reviews"
+
+ROOT = ALPASIM_DATA_ROOT
+DEFAULT_LATERAL_FEATURES = (
+    INTERMEDIATE_ROOT / "lateral_action_features_v0.3.jsonl"
+)
+DEFAULT_SCAN_CASES = (
+    REPORT_ROOT / "lateral_threshold_scan_cases_v0.1.jsonl"
+)
+DEFAULT_OUTPUT_DIRECTORY = (
+    REPORT_ROOT / "lateral_action_reviews"
+)
 SUPPORTED_IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp"}
 TIMESTAMP_PATTERN = re.compile(r"(?<!\d)(\d{10,19})(?!\d)")
 

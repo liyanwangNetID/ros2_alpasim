@@ -12,12 +12,23 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-ROOT = Path('/home/lab/data_from_alpasim')
-ANN = ROOT / 'annotations/v0.1-draft'
-DEFAULT_KEYFRAMES = ANN / 'keyframes.jsonl'
-DEFAULT_INPUT = ANN / 'intermediate/navigation_candidates_v0.1.jsonl'
-DEFAULT_OUTPUT = ANN / 'navigation.jsonl'
-DEFAULT_SUMMARY = ROOT / 'reports/navigation_generation_summary_v0.1.json'
+from project_paths import (
+    ALPASIM_DATA_ROOT,
+    ANNOTATION_ROOT,
+    INTERMEDIATE_ROOT,
+    REPORT_ROOT,
+)
+
+ROOT = ALPASIM_DATA_ROOT
+ANN = ANNOTATION_ROOT
+DEFAULT_KEYFRAMES = ANNOTATION_ROOT / 'keyframes.jsonl'
+DEFAULT_INPUT = (
+    INTERMEDIATE_ROOT / 'navigation_candidates_v0.1.jsonl'
+)
+DEFAULT_OUTPUT = ANNOTATION_ROOT / 'navigation.jsonl'
+DEFAULT_SUMMARY = (
+    REPORT_ROOT / 'navigation_generation_summary_v0.1.json'
+)
 EXPECTED_GENERATOR_VERSION = '0.1.4'
 EXPECTED_RULE_VERSION = 'navigation_rules_v0.1.4-candidate'
 FINAL_RULE_VERSION = 'navigation_rules_v0.1.4'

@@ -22,6 +22,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
+from project_paths import (
+    ALPASIM_DATA_ROOT,
+    MANIFEST_ROOT,
+    REPORT_ROOT,
+)
+
 
 SCRIPT_VERSION = "0.1.0"
 MANIFEST_VERSION = "0.1"
@@ -477,22 +483,17 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--dataset-root",
         type=Path,
-        default=Path("/home/lab/data_from_alpasim"),
+        default=ALPASIM_DATA_ROOT,
     )
     parser.add_argument(
         "--manifest-output",
         type=Path,
-        default=Path(
-            "/home/lab/data_from_alpasim/manifests/clips_v0.1.jsonl"
-        ),
+        default=MANIFEST_ROOT / "clips_v0.1.jsonl",
     )
     parser.add_argument(
         "--summary-output",
         type=Path,
-        default=Path(
-            "/home/lab/data_from_alpasim/reports/"
-            "clip_manifest_summary_v0.1.json"
-        ),
+        default=REPORT_ROOT / "clip_manifest_summary_v0.1.json",
     )
     parser.add_argument(
         "--force",

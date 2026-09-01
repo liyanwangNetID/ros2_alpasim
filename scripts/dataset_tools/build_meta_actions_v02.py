@@ -26,20 +26,29 @@ from meta_action_rules_v02 import (
     SHADOW_POLICY_VERSION,
     make_meta_action_record,
 )
+from project_paths import (
+    ALPASIM_DATA_ROOT,
+    ANNOTATION_ROOT,
+    INTERMEDIATE_ROOT,
+    REPORT_ROOT,
+)
 
-ROOT = Path("/home/lab/data_from_alpasim")
+ROOT = ALPASIM_DATA_ROOT
 DEFAULT_LATERAL_INPUT = (
-    ROOT / "annotations/v0.1-draft/intermediate/lateral_action_features_v0.3.jsonl"
+    INTERMEDIATE_ROOT / "lateral_action_features_v0.3.jsonl"
 )
 DEFAULT_LONGITUDINAL_INPUT = (
-    ROOT / "annotations/v0.1-draft/intermediate/meta_action_features_v0.2.jsonl"
+    INTERMEDIATE_ROOT / "meta_action_features_v0.2.jsonl"
 )
 DEFAULT_GEOMETRY_INPUT = (
-    ROOT / "annotations/v0.1-draft/intermediate/"
-    "lane_change_geometry_features_v0.1.jsonl"
+    INTERMEDIATE_ROOT / "lane_change_geometry_features_v0.1.jsonl"
 )
-DEFAULT_OUTPUT = ROOT / "annotations/v0.1-draft/meta_actions_v0.2.jsonl"
-DEFAULT_SUMMARY = ROOT / "reports/meta_action_generation_summary_v0.2.json"
+DEFAULT_OUTPUT = (
+    ANNOTATION_ROOT / "meta_actions_v0.2.jsonl"
+)
+DEFAULT_SUMMARY = (
+    REPORT_ROOT / "meta_action_generation_summary_v0.2.json"
+)
 
 EXPECTED_ANCHOR_COUNT = 10231
 EXPECTED_LATERAL_COUNTS = {

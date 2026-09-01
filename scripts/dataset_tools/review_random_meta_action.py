@@ -14,17 +14,21 @@ import sys
 from pathlib import Path
 from typing import Any
 
-DATA_ROOT = Path("/home/lab/data_from_alpasim")
-TOOL_ROOT = Path("/home/lab/alpasim_ros2_ws/scripts/dataset_tools")
+from project_paths import (
+    ALPASIM_DATA_ROOT,
+    ANNOTATION_ROOT,
+    INTERMEDIATE_ROOT,
+)
+
+DATA_ROOT = ALPASIM_DATA_ROOT
+TOOL_ROOT = Path(__file__).resolve().parent
 
 DEFAULT_LABEL_INPUT = (
-    DATA_ROOT / "annotations/v0.1-draft/meta_actions_v0.2.jsonl"
+    ANNOTATION_ROOT / "meta_actions_v0.2.jsonl"
 )
 DEFAULT_REVIEW_SCRIPT = TOOL_ROOT / "review_lateral_action.py"
 DEFAULT_LATERAL_FEATURE_INPUT = (
-    DATA_ROOT
-    / "annotations/v0.1-draft/intermediate/"
-    "lateral_action_features_v0.3.jsonl"
+    INTERMEDIATE_ROOT / "lateral_action_features_v0.3.jsonl"
 )
 
 

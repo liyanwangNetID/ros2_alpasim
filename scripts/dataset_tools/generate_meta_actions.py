@@ -23,10 +23,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
+from project_paths import ALPASIM_DATA_ROOT
+
 GENERATOR_VERSION = "0.1.1"
 LABEL_FORMAT_VERSION = "0.1-draft"
 RULE_VERSION = "meta_action_rules_v0.1"
-ROOT = Path("/home/lab/data_from_alpasim")
+ROOT = ALPASIM_DATA_ROOT
 DEFAULT_LATERAL_INPUT = (
     ROOT / "annotations/v0.1-draft/intermediate/lateral_action_features_v0.3.jsonl"
 )

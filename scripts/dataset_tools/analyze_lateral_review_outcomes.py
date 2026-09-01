@@ -15,10 +15,22 @@ from collections import Counter
 from pathlib import Path
 from typing import Any, Mapping
 
-ROOT = Path("/home/lab/data_from_alpasim")
-DEFAULT_FEATURES = ROOT / "annotations/v0.1-draft/intermediate/lateral_action_features_v0.3.jsonl"
-DEFAULT_REVIEWS = ROOT / "reports/lateral_branch_review_v0.1.jsonl"
-DEFAULT_OUTPUT = ROOT / "reports/lateral_branch_review_analysis_v0.1.json"
+from project_paths import (
+    ALPASIM_DATA_ROOT,
+    INTERMEDIATE_ROOT,
+    REPORT_ROOT,
+)
+
+ROOT = ALPASIM_DATA_ROOT
+DEFAULT_FEATURES = (
+    INTERMEDIATE_ROOT / "lateral_action_features_v0.3.jsonl"
+)
+DEFAULT_REVIEWS = (
+    REPORT_ROOT / "lateral_branch_review_v0.1.jsonl"
+)
+DEFAULT_OUTPUT = (
+    REPORT_ROOT / "lateral_branch_review_analysis_v0.1.json"
+)
 
 
 def read_jsonl(path: Path) -> list[dict[str, Any]]:

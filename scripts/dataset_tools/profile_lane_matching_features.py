@@ -38,29 +38,26 @@ from lane_matcher import (  # noqa: E402
     trajectory_poses_from_gt_points,
 )
 from vector_map_reader import VectorMapReader  # noqa: E402
+from project_paths import (  # noqa: E402
+    ALPASIM_DATA_ROOT,
+    ANNOTATION_ROOT,
+    INTERMEDIATE_ROOT,
+    REPORT_ROOT,
+)
 
 
 SCRIPT_VERSION = "0.1.0"
 FEATURE_FORMAT_VERSION = "0.1-draft"
 
-DEFAULT_DATASET_ROOT = Path("/home/lab/data_from_alpasim")
+DEFAULT_DATASET_ROOT = ALPASIM_DATA_ROOT
 DEFAULT_ANCHOR_INPUT = (
-    DEFAULT_DATASET_ROOT
-    / "annotations"
-    / "v0.1-draft"
-    / "candidate_anchors.jsonl"
+    ANNOTATION_ROOT / "candidate_anchors.jsonl"
 )
 DEFAULT_FEATURE_OUTPUT = (
-    DEFAULT_DATASET_ROOT
-    / "annotations"
-    / "v0.1-draft"
-    / "intermediate"
-    / "lane_matching_features_v0.1.jsonl"
+    INTERMEDIATE_ROOT / "lane_matching_features_v0.1.jsonl"
 )
 DEFAULT_SUMMARY_OUTPUT = (
-    DEFAULT_DATASET_ROOT
-    / "reports"
-    / "lane_matching_summary_v0.1.json"
+    REPORT_ROOT / "lane_matching_summary_v0.1.json"
 )
 
 

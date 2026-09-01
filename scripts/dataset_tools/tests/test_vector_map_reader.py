@@ -14,6 +14,7 @@ if str(MODULE_DIRECTORY) not in sys.path:
     sys.path.insert(0, str(MODULE_DIRECTORY))
 
 from coordinate_utils import Point2D  # noqa: E402
+from project_paths import ALPASIM_DATA_ROOT  # noqa: E402
 from vector_map_reader import (  # noqa: E402
     VectorMapError,
     VectorMapReader,
@@ -170,8 +171,11 @@ class ParsingAndTopologyTests(unittest.TestCase):
 
 class RealMapSmokeTest(unittest.TestCase):
     def test_real_map(self):
-        path = Path(
-            "/home/lab/data_from_alpasim/test_clip_001/map/vector_map.json"
+        path = (
+            ALPASIM_DATA_ROOT
+            / "test_clip_001"
+            / "map"
+            / "vector_map.json"
         )
         if not path.is_file():
             self.skipTest("real VectorMap is unavailable")

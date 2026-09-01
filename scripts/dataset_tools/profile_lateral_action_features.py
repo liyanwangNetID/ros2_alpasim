@@ -50,31 +50,29 @@ from inspect_natural_corridor_case import (  # noqa: E402
     relative_heading_features,
     trajectory_path_length,
 )
+from project_paths import (  # noqa: E402
+    ALPASIM_DATA_ROOT,
+    ANNOTATION_ROOT,
+    INTERMEDIATE_ROOT,
+    REPORT_ROOT,
+)
 
 SCRIPT_VERSION = "0.3.2"
 FEATURE_FORMAT_VERSION = "0.3.2-draft"
 DEFAULT_MINIMUM_PATH_SEGMENT_LENGTH_M = 0.1
 
-ROOT = Path("/home/lab/data_from_alpasim")
+ROOT = ALPASIM_DATA_ROOT
 DEFAULT_ANCHORS = (
-    ROOT / "annotations" / "v0.1-draft" / "candidate_anchors.jsonl"
+    ANNOTATION_ROOT / "candidate_anchors.jsonl"
 )
 DEFAULT_LANE_FEATURES = (
-    ROOT
-    / "annotations"
-    / "v0.1-draft"
-    / "intermediate"
-    / "lane_matching_features_v0.2.jsonl"
+    INTERMEDIATE_ROOT / "lane_matching_features_v0.2.jsonl"
 )
 DEFAULT_OUTPUT = (
-    ROOT
-    / "annotations"
-    / "v0.1-draft"
-    / "intermediate"
-    / "lateral_action_features_v0.3.jsonl"
+    INTERMEDIATE_ROOT / "lateral_action_features_v0.3.jsonl"
 )
 DEFAULT_SUMMARY = (
-    ROOT / "reports" / "lateral_action_feature_summary_v0.3.json"
+    REPORT_ROOT / "lateral_action_feature_summary_v0.3.json"
 )
 
 

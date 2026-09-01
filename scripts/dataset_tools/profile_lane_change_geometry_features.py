@@ -37,20 +37,27 @@ from lane_change_geometry import (
     slice_polyline_from_projection,
     truncate_polyline,
 )
+from project_paths import (
+    ALPASIM_DATA_ROOT,
+    INTERMEDIATE_ROOT,
+    REPORT_ROOT,
+)
 
 VERSION = "0.3.4"
 FORMAT_VERSION = "0.3-draft"
-ROOT = Path("/home/lab/data_from_alpasim")
+ROOT = ALPASIM_DATA_ROOT
 DEFAULT_META_FEATURE_INPUT = (
-    ROOT / "annotations/v0.1-draft/intermediate/meta_action_features_v0.2.jsonl"
+    INTERMEDIATE_ROOT / "meta_action_features_v0.2.jsonl"
 )
 DEFAULT_LATERAL_FEATURE_INPUT = (
-    ROOT / "annotations/v0.1-draft/intermediate/lateral_action_features_v0.3.jsonl"
+    INTERMEDIATE_ROOT / "lateral_action_features_v0.3.jsonl"
 )
 DEFAULT_OUTPUT = (
-    ROOT / "annotations/v0.1-draft/intermediate/lane_change_geometry_features_v0.1.jsonl"
+    INTERMEDIATE_ROOT / "lane_change_geometry_features_v0.1.jsonl"
 )
-DEFAULT_SUMMARY = ROOT / "reports/lane_change_geometry_feature_summary_v0.1.json"
+DEFAULT_SUMMARY = (
+    REPORT_ROOT / "lane_change_geometry_feature_summary_v0.1.json"
+)
 DEFAULT_ANCHORS = (
     "test_clip_096_227094511211000",   # observed keep_direction
     "test_clip_023_11825028592000",    # observed turn_left

@@ -33,12 +33,24 @@ from natural_corridor_family_guard_v01 import (
 from navigation_map_context_v01 import local_route_to_map_trajectory
 from navigation_route_features_v01 import valid_local_points
 from vector_map_reader import VectorMapReader
+from project_paths import (
+    ALPASIM_DATA_ROOT,
+    ANNOTATION_ROOT,
+    INTERMEDIATE_ROOT,
+    REPORT_ROOT,
+)
 
-DATA_ROOT = Path('/home/lab/data_from_alpasim')
-ANN = DATA_ROOT / 'annotations/v0.1-draft'
-DEFAULT_KEYFRAMES = ANN / 'keyframes.jsonl'
-DEFAULT_OUTPUT = ANN / 'intermediate/navigation_branch_context_v0.1.jsonl'
-DEFAULT_SUMMARY = DATA_ROOT / 'reports/navigation_branch_context_summary_v0.1.json'
+DATA_ROOT = ALPASIM_DATA_ROOT
+ANN = ANNOTATION_ROOT
+DEFAULT_KEYFRAMES = ANNOTATION_ROOT / 'keyframes.jsonl'
+DEFAULT_OUTPUT = (
+    INTERMEDIATE_ROOT
+    / 'navigation_branch_context_v0.1.jsonl'
+)
+DEFAULT_SUMMARY = (
+    REPORT_ROOT
+    / 'navigation_branch_context_summary_v0.1.json'
+)
 FORMAT_VERSION = '0.1-draft'
 PROFILER_VERSION = '0.1.1'
 

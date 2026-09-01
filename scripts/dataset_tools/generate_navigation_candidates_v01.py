@@ -24,15 +24,34 @@ from navigation_rules_v01 import (
     VALID_ACTIONS,
     classify_navigation,
 )
+from project_paths import (
+    ALPASIM_DATA_ROOT,
+    ANNOTATION_ROOT,
+    INTERMEDIATE_ROOT,
+    REPORT_ROOT,
+)
 
-ROOT = Path("/home/lab/data_from_alpasim")
-ANN = ROOT / "annotations/v0.1-draft"
-DEFAULT_KEYFRAMES = ANN / "keyframes.jsonl"
-DEFAULT_ROUTE_FEATURES = ANN / "intermediate/navigation_route_features_v0.1.jsonl"
-DEFAULT_BRANCH_FEATURES = ANN / "intermediate/navigation_branch_context_v0.1.jsonl"
-DEFAULT_ROAD_LEVEL_FEATURES = ANN / "intermediate/road_level_navigation_features_v0.1.jsonl"
-DEFAULT_OUTPUT = ANN / "intermediate/navigation_candidates_v0.1.jsonl"
-DEFAULT_SUMMARY = ROOT / "reports/navigation_candidate_summary_v0.1.json"
+ROOT = ALPASIM_DATA_ROOT
+ANN = ANNOTATION_ROOT
+DEFAULT_KEYFRAMES = ANNOTATION_ROOT / "keyframes.jsonl"
+DEFAULT_ROUTE_FEATURES = (
+    INTERMEDIATE_ROOT
+    / "navigation_route_features_v0.1.jsonl"
+)
+DEFAULT_BRANCH_FEATURES = (
+    INTERMEDIATE_ROOT
+    / "navigation_branch_context_v0.1.jsonl"
+)
+DEFAULT_ROAD_LEVEL_FEATURES = (
+    INTERMEDIATE_ROOT
+    / "road_level_navigation_features_v0.1.jsonl"
+)
+DEFAULT_OUTPUT = (
+    INTERMEDIATE_ROOT / "navigation_candidates_v0.1.jsonl"
+)
+DEFAULT_SUMMARY = (
+    REPORT_ROOT / "navigation_candidate_summary_v0.1.json"
+)
 
 
 def read_index(path: Path) -> dict[str, dict[str, Any]]:

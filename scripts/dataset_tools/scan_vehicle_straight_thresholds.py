@@ -22,7 +22,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
-ROOT = Path("/home/lab/data_from_alpasim")
+from project_paths import ALPASIM_DATA_ROOT
+
+ROOT = ALPASIM_DATA_ROOT
 DEFAULT_FEATURES = ROOT / "annotations/v0.1-draft/intermediate/lateral_action_features_v0.3.jsonl"
 DEFAULT_REVIEWS = ROOT / "reports/lateral_branch_review_v0.1.jsonl"
 DEFAULT_OUTPUT = ROOT / "reports/vehicle_straight_threshold_scan_v0.1.json"

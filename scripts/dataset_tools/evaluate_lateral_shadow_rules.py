@@ -18,7 +18,9 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 VERSION = "0.2.2"
-ROOT = Path("/home/lab/data_from_alpasim")
+from project_paths import ALPASIM_DATA_ROOT
+
+ROOT = ALPASIM_DATA_ROOT
 DEFAULT_LABEL_INPUT = ROOT / "annotations/v0.1-draft/meta_actions_v0.1.jsonl"
 DEFAULT_GEOMETRY_INPUT = (
     ROOT / "annotations/v0.1-draft/intermediate/"

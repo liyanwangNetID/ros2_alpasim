@@ -2,8 +2,15 @@
 
 set -eo pipefail
 
-WORKSPACE="/home/lab/alpasim_ros2_ws"
-ALPASIM="/home/lab/alpasim"
+SCRIPT_DIRECTORY="$(
+    cd "$(dirname "${BASH_SOURCE[0]}")" &&
+    pwd
+)"
+
+source "${SCRIPT_DIRECTORY}/load_local_paths.sh"
+
+WORKSPACE="${ALPASIM_ROS2_WS}"
+ALPASIM="${ALPASIM_ROOT}"
 
 exec uv run \
   --project "${ALPASIM}/src/driver" \

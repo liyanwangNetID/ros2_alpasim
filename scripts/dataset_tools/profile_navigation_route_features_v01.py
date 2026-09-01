@@ -24,14 +24,25 @@ from navigation_route_features_v01 import (
     route_geometry_features,
     valid_local_points,
 )
-
-DATA_ROOT = Path("/home/lab/data_from_alpasim")
-DEFAULT_KEYFRAMES = DATA_ROOT / "annotations/v0.1-draft/keyframes.jsonl"
-DEFAULT_OUTPUT = (
-    DATA_ROOT
-    / "annotations/v0.1-draft/intermediate/navigation_route_features_v0.1.jsonl"
+from project_paths import (
+    ALPASIM_DATA_ROOT,
+    ANNOTATION_ROOT,
+    INTERMEDIATE_ROOT,
+    REPORT_ROOT,
 )
-DEFAULT_SUMMARY = DATA_ROOT / "reports/navigation_route_feature_summary_v0.1.json"
+
+DATA_ROOT = ALPASIM_DATA_ROOT
+DEFAULT_KEYFRAMES = (
+    ANNOTATION_ROOT / "keyframes.jsonl"
+)
+DEFAULT_OUTPUT = (
+    INTERMEDIATE_ROOT
+    / "navigation_route_features_v0.1.jsonl"
+)
+DEFAULT_SUMMARY = (
+    REPORT_ROOT
+    / "navigation_route_feature_summary_v0.1.json"
+)
 DEFAULT_ROUTE_MAX_AGE_NS = 200_000_000
 
 

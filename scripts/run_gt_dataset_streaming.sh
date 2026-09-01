@@ -3,7 +3,14 @@
 set -u
 set -o pipefail
 
-REPO_DIR="/home/lab/alpasim"
+SCRIPT_DIRECTORY="$(
+    cd "$(dirname "${BASH_SOURCE[0]}")" &&
+    pwd
+)"
+
+source "${SCRIPT_DIRECTORY}/load_local_paths.sh"
+
+REPO_DIR="${ALPASIM_ROOT}"
 SUITE_CSV="${REPO_DIR}/data/scenes/my_gt_sim_suites.csv"
 SUITE_ID="public_2601"
 

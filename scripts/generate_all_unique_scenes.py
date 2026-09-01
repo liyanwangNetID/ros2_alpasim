@@ -32,6 +32,15 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
+SCRIPT_DIRECTORY = Path(__file__).resolve().parent
+DATASET_TOOL_DIRECTORY = SCRIPT_DIRECTORY / "dataset_tools"
+
+if str(DATASET_TOOL_DIRECTORY) not in sys.path:
+    sys.path.insert(0, str(DATASET_TOOL_DIRECTORY))
+
+from project_paths import ALPASIM_ROOT  # noqa: E402
+
+
 @dataclass(frozen=True)
 class CatalogSource:
     """Describe one suite and artifact catalog pair."""
@@ -595,9 +604,10 @@ def parse_arguments() -> (
     parser.add_argument(
         "--scenes-dir",
         type=Path,
-        default=Path(
-            "/home/lab/alpasim/"
-            "data/scenes"
+        default=(
+            ALPASIM_ROOT
+            / "data"
+            / "scenes"
         ),
         help=(
             "Directory containing the "

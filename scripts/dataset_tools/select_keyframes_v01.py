@@ -21,14 +21,29 @@ from keyframe_selection_rules_v01 import (
     STABLE_LONGITUDINAL_QUOTAS,
     select_with_clip_preference,
 )
+from project_paths import (
+    ALPASIM_DATA_ROOT,
+    ANNOTATION_ROOT,
+    INTERMEDIATE_ROOT,
+    REPORT_ROOT,
+)
 
-ROOT = Path("/home/lab/data_from_alpasim")
-ANN = ROOT / "annotations/v0.1-draft"
-DEFAULT_CANDIDATES = ANN / "candidate_anchors.jsonl"
-DEFAULT_META = ANN / "meta_actions_v0.2.jsonl"
-DEFAULT_EVENTS = ANN / "intermediate/keyframe_event_candidates_deduplicated_v0.1.jsonl"
-DEFAULT_OUTPUT = ANN / "keyframes.jsonl"
-DEFAULT_SUMMARY = ROOT / "reports/keyframe_selection_summary_v0.1.json"
+ROOT = ALPASIM_DATA_ROOT
+ANN = ANNOTATION_ROOT
+DEFAULT_CANDIDATES = (
+    ANNOTATION_ROOT / "candidate_anchors.jsonl"
+)
+DEFAULT_META = (
+    ANNOTATION_ROOT / "meta_actions_v0.2.jsonl"
+)
+DEFAULT_EVENTS = (
+    INTERMEDIATE_ROOT
+    / "keyframe_event_candidates_deduplicated_v0.1.jsonl"
+)
+DEFAULT_OUTPUT = ANNOTATION_ROOT / "keyframes.jsonl"
+DEFAULT_SUMMARY = (
+    REPORT_ROOT / "keyframe_selection_summary_v0.1.json"
+)
 
 
 def read_index(path: Path) -> dict[str, dict[str, Any]]:

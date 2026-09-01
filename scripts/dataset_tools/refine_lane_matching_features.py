@@ -29,19 +29,24 @@ if str(MODULE_DIRECTORY) not in sys.path:
     sys.path.insert(0, str(MODULE_DIRECTORY))
 
 from clip_reader import DrivingClipReader, stamp_mapping_to_ns  # noqa: E402
+from project_paths import (  # noqa: E402
+    ALPASIM_DATA_ROOT,
+    INTERMEDIATE_ROOT,
+    REPORT_ROOT,
+)
 
 SCRIPT_VERSION = "0.2.0"
 FEATURE_FORMAT_VERSION = "0.2-draft"
-DEFAULT_ROOT = Path("/home/lab/data_from_alpasim")
+DEFAULT_ROOT = ALPASIM_DATA_ROOT
 DEFAULT_INPUT = (
-    DEFAULT_ROOT / "annotations" / "v0.1-draft" / "intermediate"
-    / "lane_matching_features_v0.1.jsonl"
+    INTERMEDIATE_ROOT / "lane_matching_features_v0.1.jsonl"
 )
 DEFAULT_OUTPUT = (
-    DEFAULT_ROOT / "annotations" / "v0.1-draft" / "intermediate"
-    / "lane_matching_features_v0.2.jsonl"
+    INTERMEDIATE_ROOT / "lane_matching_features_v0.2.jsonl"
 )
-DEFAULT_SUMMARY = DEFAULT_ROOT / "reports" / "lane_matching_refinement_summary_v0.2.json"
+DEFAULT_SUMMARY = (
+    REPORT_ROOT / "lane_matching_refinement_summary_v0.2.json"
+)
 
 
 def read_jsonl(path: Path) -> list[dict[str, Any]]:

@@ -678,10 +678,11 @@ Map marker republish period:  2.0 s
 
 ## 7. 构建
 
-在 ROS workspace 中：
+在 ROS workspace 仓库根目录中：
 
 ```bash
-cd /home/lab/alpasim_ros2_ws
+source scripts/load_local_paths.sh
+cd "$ALPASIM_ROS2_WS"
 
 source /opt/ros/jazzy/setup.zsh
 
@@ -730,7 +731,7 @@ ros2 interface show alpasim_msgs/srv/GetGroundTruthEgoTrajectory
 
 ```bash
 source /opt/ros/jazzy/setup.zsh
-source /home/lab/alpasim_ros2_ws/install/setup.zsh
+source "$ALPASIM_ROS2_WS/install/setup.zsh"
 
 ros2 launch \
   ego_vehicle_description \
@@ -1000,6 +1001,11 @@ ros2 launch ego_vehicle_description display.launch.py
 
 # ROS2 side
 
+source scripts/load_local_paths.sh
+cd "$ALPASIM_ROS2_WS"
+source /opt/ros/jazzy/setup.zsh
+source install/setup.zsh
+
 ## Launch
 ros2 launch ego_vehicle_description display.launch.py
 
@@ -1009,7 +1015,7 @@ ros2 run alpasim_dataset_tools data_batch_recorder
 ## Start a Planner
 ros2 run alpasim_planning synthetic_trajectory_planner
 
-/home/lab/alpasim_ros2_ws/scripts/run_vavam_planner.sh
+"$ALPASIM_ROS2_WS/scripts/run_vavam_planner.sh"
 
 ros2 run alpasim_planning ground_truth_replay_planner
 
@@ -1019,13 +1025,15 @@ ros2 run alpasim_planning ground_truth_replay_planner
 
 # Alpasim side
 
+cd "$ALPASIM_ROOT"
+
 ## Bridge to ROS2
 uv run --project src/driver python -m alpasim_driver.main \
-  --config-path=/home/lab/alpasim/src/driver/configs \
+  --config-path="$ALPASIM_ROOT/src/driver/configs" \
   --config-name=external_trajectory
 
 ## For Record Data
-/home/lab/alpasim_ros2_ws/scripts/run_gt_dataset_streaming.sh
+"$ALPASIM_ROS2_WS/scripts/run_gt_dataset_streaming.sh"
 
 ## Run One Scene
 uv run --project src/wizard alpasim_wizard \
@@ -1050,7 +1058,7 @@ uv run --project src/wizard alpasim_wizard \
   topology=1gpu \
   wizard.log_dir="$PWD/runs/gt_replay_dataset" \
   scenes.test_suite_id=public_2601 \
-  scenes.suites_csv='["/home/lab/alpasim/data/scenes/my_gt_sim_suites.csv"]' \
+  scenes.suites_csv="[\"${ALPASIM_ROOT}/data/scenes/my_gt_sim_suites.csv\"]" \
   wizard.external_services.driver='["172.23.0.1:6789"]' \
   runtime.endpoints.renderer.n_concurrent_rollouts=1 \
   runtime.endpoints.driver.n_concurrent_rollouts=1 \

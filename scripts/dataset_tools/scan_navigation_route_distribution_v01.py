@@ -9,9 +9,17 @@ from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
 
-ROOT = Path("/home/lab/data_from_alpasim/annotations/v0.1-draft")
-FEATURE_PATH = ROOT / "intermediate/navigation_route_features_v0.1.jsonl"
-KEYFRAME_PATH = ROOT / "keyframes.jsonl"
+from project_paths import (
+    ANNOTATION_ROOT,
+    INTERMEDIATE_ROOT,
+)
+
+ROOT = ANNOTATION_ROOT
+FEATURE_PATH = (
+    INTERMEDIATE_ROOT
+    / "navigation_route_features_v0.1.jsonl"
+)
+KEYFRAME_PATH = ANNOTATION_ROOT / "keyframes.jsonl"
 
 
 def read_index(path: Path) -> dict[str, dict[str, Any]]:
