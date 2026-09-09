@@ -10,6 +10,26 @@ from triangle_angular_fov_subdivision_v01 import (
 )
 
 
+class BoundaryProjection:
+    def __init__(self, u, v):
+        self.u = u
+        self.v = v
+        self.positive_z = True
+        self.within_fov = True
+        self.valid = True
+
+
+class NormalizedCalibration:
+    def __init__(self, scale=100.0):
+        self.scale = scale
+
+    def project_camera_point(self, point):
+        return BoundaryProjection(
+            self.scale * point.x / point.z,
+            self.scale * point.y / point.z,
+        )
+
+
 def inside_triangle():
     return (
         Vector3(-0.1, -0.1, 2.0),
@@ -136,6 +156,87 @@ def test_child_winding_is_preserved_for_accepted_children():
             - (second.y - first.y) * (third.x - first.x)
         )
         assert signed > 0.0
+
+
+def test_small_boundary_is_reported_as_approximated():
+    result = subdivide_triangle_to_angular_fov(
+        mixed_triangle(),
+        max_angle_rad=0.5,
+        maximum_depth=8,
+        calibration=NormalizedCalibration(scale=1.0),
+        maximum_boundary_extent_px=10.0,
+    )
+    assert result.boundary_approximated_triangles
+    assert result.boundary_depth_limited_triangles == ()
+    assert result.boundary_unmeasurable_triangles == ()
+    assert not result.stopped_by_depth_limit
+
+
+def test_large_boundary_at_depth_limit_is_reported_separately():
+    result = subdivide_triangle_to_angular_fov(
+        mixed_triangle(),
+        max_angle_rad=0.5,
+        maximum_depth=0,
+        calibration=NormalizedCalibration(scale=1000.0),
+        maximum_boundary_extent_px=0.01,
+    )
+    assert result.boundary_approximated_triangles == ()
+    assert len(result.boundary_depth_limited_triangles) == 1
+    assert result.boundary_unmeasurable_triangles == ()
+    assert result.stopped_by_depth_limit
+
+
+def test_unmeasurable_boundary_is_not_treated_as_zero_extent():
+    triangle = (
+        Vector3(-3.0, -2.0, 2.0),
+        Vector3(3.0, -2.0, 2.0),
+        Vector3(0.0, 4.0, 2.0),
+    )
+    result = subdivide_triangle_to_angular_fov(
+        triangle,
+        max_angle_rad=0.1,
+        maximum_depth=0,
+        calibration=NormalizedCalibration(),
+        maximum_boundary_extent_px=1.0,
+    )
+    assert result.boundary_approximated_triangles == ()
+    assert result.boundary_depth_limited_triangles == ()
+    assert len(result.boundary_unmeasurable_triangles) == 1
+    assert result.stopped_by_depth_limit
+
+
+def test_legacy_unresolved_property_contains_two_unresolved_categories():
+    result = subdivide_triangle_to_angular_fov(
+        mixed_triangle(),
+        max_angle_rad=0.5,
+        maximum_depth=0,
+    )
+    assert result.boundary_unresolved_triangles == (
+        result.boundary_depth_limited_triangles
+        + result.boundary_unmeasurable_triangles
+    )
+
+
+def test_boundary_limit_requires_calibration():
+    with pytest.raises(ValueError, match="calibration is required"):
+        subdivide_triangle_to_angular_fov(
+            mixed_triangle(),
+            max_angle_rad=0.5,
+            maximum_depth=2,
+            maximum_boundary_extent_px=1.0,
+        )
+
+
+@pytest.mark.parametrize("limit", (0.0, -1.0, math.nan, math.inf))
+def test_invalid_boundary_extent_limit_is_rejected(limit):
+    with pytest.raises(ValueError, match="maximum_boundary_extent_px"):
+        subdivide_triangle_to_angular_fov(
+            mixed_triangle(),
+            max_angle_rad=0.5,
+            maximum_depth=2,
+            calibration=NormalizedCalibration(),
+            maximum_boundary_extent_px=limit,
+        )
 
 
 @pytest.mark.parametrize("count", (0, 2, 4))

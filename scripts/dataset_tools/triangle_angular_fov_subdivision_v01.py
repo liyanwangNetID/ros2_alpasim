@@ -20,6 +20,9 @@ from triangle_angular_fov_diagnostics_v01 import (
 from triangle_cone_intersection_v01 import (
     triangle_intersects_angular_fov_cone,
 )
+from ftheta_fov_boundary_projected_extent_v01 import (
+    summarize_angular_fov_boundary_projected_extent,
+)
 
 Triangle3D = tuple[Vector3, Vector3, Vector3]
 
@@ -31,20 +34,31 @@ class AngularFovAcceptedTriangle:
 
 
 @dataclass(frozen=True, slots=True)
-class AngularFovUnresolvedTriangle:
+class AngularFovBoundaryTriangle:
     vertices_camera: Triangle3D
     subdivision_depth: int
     sample_inside_count: int
     edge_intersection_count: int
+    maximum_boundary_extent_px: float | None
 
 
 @dataclass(frozen=True, slots=True)
 class AngularFovTriangleSubdivision:
     accepted_inside_triangles: tuple[AngularFovAcceptedTriangle, ...]
-    boundary_unresolved_triangles: tuple[AngularFovUnresolvedTriangle, ...]
+    boundary_approximated_triangles: tuple[AngularFovBoundaryTriangle, ...]
+    boundary_depth_limited_triangles: tuple[AngularFovBoundaryTriangle, ...]
+    boundary_unmeasurable_triangles: tuple[AngularFovBoundaryTriangle, ...]
     rejected_outside_triangle_count: int
     maximum_depth_reached: int
     stopped_by_depth_limit: bool
+
+    @property
+    def boundary_unresolved_triangles(self) -> tuple[AngularFovBoundaryTriangle, ...]:
+        # Backward-compatible union of unresolved boundary outputs.
+        return (
+            self.boundary_depth_limited_triangles
+            + self.boundary_unmeasurable_triangles
+        )
 
 
 def _finite_point(point: Vector3) -> None:
@@ -75,6 +89,8 @@ def subdivide_triangle_to_angular_fov(
     *,
     max_angle_rad: float | None,
     maximum_depth: int,
+    calibration=None,
+    maximum_boundary_extent_px: float | None = None,
 ) -> AngularFovTriangleSubdivision:
     """Recursively classify a positive-depth triangle against the FOV cone.
 
@@ -93,13 +109,27 @@ def subdivide_triangle_to_angular_fov(
         raise TypeError("maximum_depth must be an integer")
     if maximum_depth < 0:
         raise ValueError("maximum_depth must be non-negative")
+    if maximum_boundary_extent_px is not None:
+        boundary_limit = float(maximum_boundary_extent_px)
+        if not math.isfinite(boundary_limit) or boundary_limit <= 0.0:
+            raise ValueError(
+                "maximum_boundary_extent_px must be positive and finite"
+            )
+        if calibration is None:
+            raise ValueError(
+                "calibration is required when maximum_boundary_extent_px is set"
+            )
+    else:
+        boundary_limit = None
 
     root: Triangle3D = tuple(triangle_camera)  # type: ignore[assignment]
     for point in root:
         _finite_point(point)
 
     accepted: list[AngularFovAcceptedTriangle] = []
-    unresolved: list[AngularFovUnresolvedTriangle] = []
+    approximated: list[AngularFovBoundaryTriangle] = []
+    depth_limited: list[AngularFovBoundaryTriangle] = []
+    unmeasurable: list[AngularFovBoundaryTriangle] = []
     rejected_count = 0
     maximum_depth_reached = 0
 
@@ -151,18 +181,44 @@ def subdivide_triangle_to_angular_fov(
             for edge in diagnostics.edge_intersections
         )
 
-        if depth >= maximum_depth:
-            if inside_count == 0 and edge_intersection_count == 0:
-                rejected_count += 1
-            else:
-                unresolved.append(
-                    AngularFovUnresolvedTriangle(
+        boundary_extent = None
+        measurable = False
+        if boundary_limit is not None:
+            extent = summarize_angular_fov_boundary_projected_extent(
+                vertices,
+                calibration,
+                max_angle_rad=max_angle_rad,
+            )
+            measurable = extent.has_measurable_extent
+            boundary_extent = extent.maximum_pair_distance_px
+            if (
+                measurable
+                and boundary_extent is not None
+                and boundary_extent <= boundary_limit
+            ):
+                approximated.append(
+                    AngularFovBoundaryTriangle(
                         vertices_camera=vertices,
                         subdivision_depth=depth,
                         sample_inside_count=inside_count,
                         edge_intersection_count=edge_intersection_count,
+                        maximum_boundary_extent_px=boundary_extent,
                     )
                 )
+                return
+
+        if depth >= maximum_depth:
+            boundary = AngularFovBoundaryTriangle(
+                vertices_camera=vertices,
+                subdivision_depth=depth,
+                sample_inside_count=inside_count,
+                edge_intersection_count=edge_intersection_count,
+                maximum_boundary_extent_px=boundary_extent,
+            )
+            if boundary_limit is not None and not measurable:
+                unmeasurable.append(boundary)
+            else:
+                depth_limited.append(boundary)
             return
 
         children: tuple[Triangle3D, ...] = (
@@ -177,8 +233,10 @@ def subdivide_triangle_to_angular_fov(
     recurse(root, 0)
     return AngularFovTriangleSubdivision(
         accepted_inside_triangles=tuple(accepted),
-        boundary_unresolved_triangles=tuple(unresolved),
+        boundary_approximated_triangles=tuple(approximated),
+        boundary_depth_limited_triangles=tuple(depth_limited),
+        boundary_unmeasurable_triangles=tuple(unmeasurable),
         rejected_outside_triangle_count=rejected_count,
         maximum_depth_reached=maximum_depth_reached,
-        stopped_by_depth_limit=bool(unresolved),
+        stopped_by_depth_limit=bool(depth_limited or unmeasurable),
     )
