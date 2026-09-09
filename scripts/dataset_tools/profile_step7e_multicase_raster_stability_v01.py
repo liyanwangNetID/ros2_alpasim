@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Profile multi-Actor visibility stability across a small real case matrix.
 
-Diagnostic only. Three fixed clip/camera cases are evaluated at three raster
+Diagnostic only. Five fixed clip/camera cases are evaluated at four raster
 resolutions. Each run builds all Actor surface rasters, resolves one shared
 Z-buffer, and reports Actor visibility fractions without selecting production
 parameters or modifying dataset products.
@@ -28,6 +28,8 @@ CASES = (
     ("test_clip_001_9306612661000", "front_tele"),
     ("test_clip_001_9306612661000", "front_wide"),
     ("test_clip_063_18787721418000", "front_tele"),
+    ("test_clip_564_95233721166000", "cross_left"),
+    ("test_clip_316_1404486225261000", "cross_right"),
 )
 RASTERS = ((160, 90), (320, 180), (480, 270), (640, 360))
 REFERENCE_RASTER = (640, 360)
