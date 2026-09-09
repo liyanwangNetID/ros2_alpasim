@@ -199,6 +199,8 @@ class DrivingClipReader:
         self._route_index: TemporalIndex[dict[str, Any]] | None = None
         self._actor_records: tuple[dict[str, Any], ...] | None = None
         self._actor_index: TemporalIndex[dict[str, Any]] | None = None
+        self._recorded_ego_records: tuple[dict[str, Any], ...] | None = None
+        self._recorded_ego_index: TemporalIndex[dict[str, Any]] | None = None
         self._complete_gt: dict[str, Any] | None = None
         self._complete_gt_points: tuple[dict[str, Any], ...] | None = None
         self._complete_gt_index: TemporalIndex[dict[str, Any]] | None = None
@@ -379,6 +381,50 @@ class DrivingClipReader:
             )
         return tuple(waypoints)
 
+    def _ensure_recorded_ego_states(self) -> None:
+        if self._recorded_ego_index is not None:
+            return
+        rows = _read_jsonl(
+            self.clip_directory / "ego" / "ego_state.jsonl"
+        )
+        messages = tuple(_message_envelope(row) for row in rows)
+        self._recorded_ego_records = messages
+        self._recorded_ego_index = TemporalIndex(
+            [
+                stamp_mapping_to_ns(message["stamp"])
+                for message in messages
+            ],
+            messages,
+            name=f"{self.clip_id}:recorded_ego_state"
+        )
+
+    def get_recorded_ego_state_at_or_before(
+        self,
+        anchor_ns: int,
+        *,
+        maximum_age_ns: int = 0,
+    ) -> TimedMessage | None:
+        """Return the latest recorded Ego state at or before Anchor.
+
+        This API reads ego/ego_state.jsonl and never uses a future
+        state. The default maximum age of zero requires an exact
+        timestamp match. It does not change get_ego_state_at(), which
+        keeps its existing executed-path interpolation behavior.
+        """
+        self._ensure_recorded_ego_states()
+        assert self._recorded_ego_index is not None
+        match = self._recorded_ego_index.at_or_before(
+            anchor_ns,
+            tolerance_ns=maximum_age_ns,
+        )
+        if match is None:
+            return None
+        return TimedMessage(
+            stamp_ns=match.timestamp_ns,
+            time_error_ns=match.error_ns,
+            message=match.value,
+        )
+
     def _ensure_routes(self) -> None:
         if self._route_index is not None:
             return
@@ -445,6 +491,37 @@ class DrivingClipReader:
             stamp_ns=match.timestamp_ns,
             time_error_ns=match.error_ns,
             message=match.value,
+        )
+
+    def get_actor_snapshots(
+        self,
+        end_ns: int,
+        *,
+        duration_ns: int,
+    ) -> tuple[TimedMessage, ...]:
+        """Return Actor snapshots in [end_ns - duration_ns, end_ns].
+
+        Results are time-ordered, contain no data after end_ns, and
+        reuse the cached actors/current.jsonl temporal index.
+        """
+        if isinstance(duration_ns, bool) or not isinstance(duration_ns, int):
+            raise TypeError("duration_ns must be an integer nanosecond value")
+        if duration_ns < 0:
+            raise ValueError("duration_ns must be non-negative")
+
+        self._ensure_actors()
+        assert self._actor_index is not None
+        matches = self._actor_index.closed_range(
+            end_ns - duration_ns,
+            end_ns,
+        )
+        return tuple(
+            TimedMessage(
+                stamp_ns=match.timestamp_ns,
+                time_error_ns=match.error_ns,
+                message=match.value,
+            )
+            for match in matches
         )
 
     def _ensure_complete_gt(self) -> None:

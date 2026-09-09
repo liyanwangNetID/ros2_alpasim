@@ -232,6 +232,39 @@ class TemporalIndex(Generic[T]):
             return None
         return match
 
+    def closed_range(
+        self,
+        start_ns: int,
+        end_ns: int,
+    ) -> tuple[TemporalMatch[T], ...]:
+        """Return entries in the inclusive interval [start_ns, end_ns].
+
+        Results preserve timestamp order. Each match uses end_ns as its
+        target, so error_ns describes the entry's age relative to the
+        end of the requested window.
+        """
+        self._validate_target(start_ns)
+        self._validate_target(end_ns)
+
+        if start_ns > end_ns:
+            raise ValueError(
+                "start_ns must be less than or equal to end_ns"
+            )
+
+        first = bisect_left(
+            self._timestamps_ns,
+            start_ns,
+        )
+        stop = bisect_right(
+            self._timestamps_ns,
+            end_ns,
+        )
+
+        return tuple(
+            self._match(index, end_ns)
+            for index in range(first, stop)
+        )
+
     def require_nearest(
         self,
         target_ns: int,
@@ -239,7 +272,10 @@ class TemporalIndex(Generic[T]):
         tolerance_ns: int | None = None,
     ) -> TemporalMatch[T]:
         """Nearest lookup that raises TemporalMatchError on failure."""
-        match = self.nearest(target_ns, tolerance_ns=tolerance_ns)
+        match = self.nearest(
+            target_ns,
+            tolerance_ns=tolerance_ns,
+        )
         if match is None:
             raise TemporalMatchError(
                 f"{self.name}: no match for target {target_ns} within "

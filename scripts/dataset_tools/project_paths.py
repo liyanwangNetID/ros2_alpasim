@@ -95,4 +95,5 @@ ALPASIM_ROOT = configured_path(
 ANNOTATION_ROOT = ALPASIM_DATA_ROOT / "annotations" / "v0.1-draft"
 INTERMEDIATE_ROOT = ANNOTATION_ROOT / "intermediate"
 REPORT_ROOT = ALPASIM_DATA_ROOT / "reports"
+SCHEMA_ROOT = ALPASIM_DATA_ROOT / "schemas"
 MANIFEST_ROOT = ALPASIM_DATA_ROOT / "manifests"

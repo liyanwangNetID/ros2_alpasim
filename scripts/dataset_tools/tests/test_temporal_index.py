@@ -77,6 +77,74 @@ class TemporalIndexTests(unittest.TestCase):
         with self.assertRaises(TemporalMatchError):
             self.index.require_nearest(500 * MS, tolerance_ns=50 * MS)
 
+    def test_closed_range_includes_both_boundaries(self) -> None:
+        matches = self.index.closed_range(
+            100 * MS,
+            300 * MS,
+        )
+
+        self.assertEqual(
+            [match.value for match in matches],
+            ["a", "b", "c"],
+        )
+        self.assertEqual(
+            [match.timestamp_ns for match in matches],
+            [100 * MS, 200 * MS, 300 * MS],
+        )
+
+    def test_closed_range_returns_internal_entries(self) -> None:
+        matches = self.index.closed_range(
+            150 * MS,
+            250 * MS,
+        )
+
+        self.assertEqual(
+            [match.value for match in matches],
+            ["b"],
+        )
+
+    def test_closed_range_uses_end_as_target(self) -> None:
+        matches = self.index.closed_range(
+            100 * MS,
+            250 * MS,
+        )
+
+        self.assertEqual(
+            [match.target_ns for match in matches],
+            [250 * MS, 250 * MS],
+        )
+        self.assertEqual(
+            [match.error_ns for match in matches],
+            [-150 * MS, -50 * MS],
+        )
+
+    def test_closed_range_empty_result(self) -> None:
+        self.assertEqual(
+            self.index.closed_range(
+                310 * MS,
+                400 * MS,
+            ),
+            (),
+        )
+
+    def test_closed_range_allows_zero_duration(self) -> None:
+        matches = self.index.closed_range(
+            200 * MS,
+            200 * MS,
+        )
+
+        self.assertEqual(
+            [match.value for match in matches],
+            ["b"],
+        )
+
+    def test_closed_range_rejects_reversed_bounds(self) -> None:
+        with self.assertRaises(ValueError):
+            self.index.closed_range(
+                300 * MS,
+                200 * MS,
+            )
+
     def test_query_offsets(self) -> None:
         matches = self.index.query_offsets(
             300 * MS,
