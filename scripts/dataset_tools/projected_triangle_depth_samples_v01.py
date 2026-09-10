@@ -3,11 +3,8 @@
 
 The module first obtains conservative raster-cell coverage, then samples each
 covered cell at its center. Only centers inside the closed projected triangle
-produce depth samples. Camera depth is interpolated from screen-space
-barycentric weights using reciprocal depth.
-
-This module processes one triangle only. It does not merge surfaces, assign an
-Actor owner, or perform Z-buffer competition.
+produce depth samples. A degenerate projected triangle retains conservative
+coverage diagnostics but produces zero center samples.
 """
 
 from __future__ import annotations
@@ -24,6 +21,7 @@ from projected_triangle_raster_cells_v01 import (
 from triangle_barycentric_coordinates_v01 import (
     Point2D,
     triangle_barycentric_coordinates,
+    triangle_is_degenerate,
 )
 from triangle_perspective_depth_v01 import (
     interpolate_perspective_camera_depth,
@@ -77,15 +75,15 @@ def sample_projected_triangle_depths(
         raster_width=raster_width,
         raster_height=raster_height,
     )
-
     barycentric_triangle = tuple(Point2D(point.u, point.v) for point in pixels)
 
-    # Validate non-degeneracy even when the triangle has no in-raster cells.
-    centroid = Point2D(
-        sum(point.u for point in pixels) / 3.0,
-        sum(point.v for point in pixels) / 3.0,
-    )
-    triangle_barycentric_coordinates(barycentric_triangle, centroid)
+    if triangle_is_degenerate(barycentric_triangle):
+        return ProjectedTriangleDepthSamples(
+            conservative_coverage_cells=coverage.cells,
+            center_sampled_depths=(),
+            conservative_cell_count=len(coverage.cells),
+            center_sampled_cell_count=0,
+        )
 
     pixel_width_per_cell = image_width_px / raster_width
     pixel_height_per_cell = image_height_px / raster_height

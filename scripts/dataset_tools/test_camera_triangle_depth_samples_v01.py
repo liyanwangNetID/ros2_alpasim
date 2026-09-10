@@ -179,17 +179,34 @@ def test_nonfinite_projection_is_rejected():
 
 
 def test_degenerate_projected_triangle_is_rejected_by_sampler():
-    with pytest.raises(ValueError, match="non-degenerate"):
-        sample_camera_triangle_depths(
-            (
-                Vector3(0.0, 0.0, 1.0),
-                Vector3(1.0, 1.0, 2.0),
-                Vector3(2.0, 2.0, 3.0),
-            ),
-            LinearCalibration(),
-            image_width_px=8, image_height_px=8,
-            raster_width=8, raster_height=8,
-        )
+    class DegenerateProjectionCalibration:
+        def project_camera_point(self, point):
+            class Projection:
+                pass
+
+            result = Projection()
+            result.u = point.x * 10.0
+            result.v = point.x * 10.0
+            result.positive_z = True
+            result.within_fov = True
+            result.valid = True
+            return result
+
+    result = sample_camera_triangle_depths(
+        (
+            Vector3(1.0, 0.0, 10.0),
+            Vector3(2.0, 0.0, 10.0),
+            Vector3(3.0, 0.0, 10.0),
+        ),
+        DegenerateProjectionCalibration(),
+        image_width_px=100,
+        image_height_px=100,
+        raster_width=50,
+        raster_height=50,
+    )
+
+    assert result.center_sampled_depths == ()
+    assert result.center_sampled_cell_count == 0
 
 
 def test_invalid_raster_dimensions_are_delegated():

@@ -98,10 +98,21 @@ def test_triangle_outside_raster_has_no_samples():
 
 
 def test_degenerate_projected_triangle_is_rejected():
-    with pytest.raises(ValueError, match="non-degenerate"):
-        sample(
-            (PixelPoint(0.0, 0.0), PixelPoint(1.0, 1.0), PixelPoint(2.0, 2.0)),
-        )
+    result = sample_projected_triangle_depths(
+        (
+            PixelPoint(10.0, 10.0),
+            PixelPoint(20.0, 20.0),
+            PixelPoint(30.0, 30.0),
+        ),
+        (10.0, 11.0, 12.0),
+        image_width_px=100,
+        image_height_px=100,
+        raster_width=50,
+        raster_height=50,
+    )
+
+    assert result.center_sampled_depths == ()
+    assert result.center_sampled_cell_count == 0
 
 
 @pytest.mark.parametrize("count", (0, 2, 4))
