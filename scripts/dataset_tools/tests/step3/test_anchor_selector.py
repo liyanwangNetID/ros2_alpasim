@@ -3,14 +3,12 @@
 
 from __future__ import annotations
 
-import sys
 import unittest
 from dataclasses import dataclass
-from pathlib import Path
 from types import SimpleNamespace
 
 
-from anchor_selector import (  # noqa: E402
+from step3.candidate_anchors import (  # noqa: E402
     AnchorEvaluation,
     AnchorSelector,
     AnchorSelectorConfig,

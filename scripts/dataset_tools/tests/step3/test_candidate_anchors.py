@@ -9,7 +9,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 
-from build_candidate_anchors import parse_args
+from step3.candidate_anchors import parse_args
 from project_paths import (
     ALPASIM_DATA_ROOT,
     ANNOTATION_ROOT,
@@ -20,7 +20,7 @@ from project_paths import (
 
 class BuildCandidateAnchorsPathTests(unittest.TestCase):
     def test_default_paths_come_from_project_configuration(self):
-        with patch.object(sys, "argv", ["build_candidate_anchors.py"]):
+        with patch.object(sys, "argv", ["candidate_anchors.py"]):
             args = parse_args()
 
         self.assertEqual(args.dataset_root, ALPASIM_DATA_ROOT)
@@ -42,7 +42,7 @@ class BuildCandidateAnchorsPathTests(unittest.TestCase):
 
     def test_cli_paths_override_project_configuration(self):
         argv = [
-            "build_candidate_anchors.py",
+            "candidate_anchors.py",
             "--dataset-root",
             "/portable/dataset",
             "--manifest",
