@@ -13,14 +13,14 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
-from coordinate_utils import (
+from step2.coordinate_utils import (
     Pose2D,
     interpolate_angle,
     interpolate_scalar,
     map_pose_to_anchor_ego,
     pose2d_from_pose_mapping,
 )
-from temporal_index import (
+from step2.temporal_index import (
     MultiCameraSequence,
     TemporalIndex,
     synchronize_camera_sequence,

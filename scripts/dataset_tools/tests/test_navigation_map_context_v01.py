@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from coordinate_utils import Pose2D
+from step2.coordinate_utils import Pose2D
 from navigation_map_context_v01 import local_route_to_map_trajectory
 
 

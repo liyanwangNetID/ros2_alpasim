@@ -18,7 +18,7 @@ from natural_lane_corridor import (
     NaturalCorridorConfig,
     evaluate_branch_candidates,
 )
-from vector_map_reader import VectorMapReader
+from step2.vector_map_reader import VectorMapReader
 
 FAMILY_GUARD_VERSION = "natural_corridor_family_guard_v0.3"
 DEFAULT_HORIZONS_M = (40.0, 60.0, 80.0)

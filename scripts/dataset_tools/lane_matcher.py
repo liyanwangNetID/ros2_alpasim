@@ -12,8 +12,8 @@ import math
 from dataclasses import asdict, dataclass
 from typing import Any, Mapping, Sequence
 
-from coordinate_utils import Point2D, normalize_angle, pose2d_from_pose_mapping
-from vector_map_reader import NearbyLane, VectorMapReader
+from step2.coordinate_utils import Point2D, normalize_angle, pose2d_from_pose_mapping
+from step2.vector_map_reader import NearbyLane, VectorMapReader
 
 
 @dataclass(frozen=True, slots=True)

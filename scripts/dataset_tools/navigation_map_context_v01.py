@@ -6,14 +6,14 @@ import math
 from collections import Counter
 from typing import Any, Mapping, Sequence
 
-from coordinate_utils import Point2D, Pose2D, anchor_ego_point_to_map
+from step2.coordinate_utils import Point2D, Pose2D, anchor_ego_point_to_map
 from lane_matcher import LaneMatcher, TrajectoryPose
 from natural_lane_corridor import (
     NaturalCorridorConfig,
     build_natural_lane_corridor,
     compare_actual_lane_sequence,
 )
-from vector_map_reader import VectorMapReader
+from step2.vector_map_reader import VectorMapReader
 
 FEATURE_FORMAT_VERSION = '0.1-draft'
 PROFILER_VERSION = '0.1.0'

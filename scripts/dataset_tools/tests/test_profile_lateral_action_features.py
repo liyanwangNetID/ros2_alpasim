@@ -6,17 +6,14 @@ import sys
 import unittest
 from pathlib import Path
 
-MODULE_DIRECTORY = Path(__file__).resolve().parent.parent
-if str(MODULE_DIRECTORY) not in sys.path:
-    sys.path.insert(0, str(MODULE_DIRECTORY))
 
-from coordinate_utils import Point2D
+from step2.coordinate_utils import Point2D
 from profile_lateral_action_features import (
     filtered_path_heading_features,
     signed_and_absolute_change,
     topology_evidence,
 )
-from vector_map_reader import VectorMapReader
+from step2.vector_map_reader import VectorMapReader
 
 
 def polyline(points):

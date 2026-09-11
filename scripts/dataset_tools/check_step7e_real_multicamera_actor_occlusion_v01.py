@@ -12,7 +12,7 @@ from __future__ import annotations
 from collections import Counter
 
 from camera_projection_v01 import load_camera_calibration
-from clip_reader import DrivingClipReader
+from step2.clip_reader import DrivingClipReader
 from multicamera_actor_occlusion_from_geometry_v01 import (
     CameraOcclusionBuildInput,
     build_multicamera_actor_occlusion_from_geometry,

@@ -8,17 +8,13 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-MODULE_DIRECTORY = Path(__file__).resolve().parent.parent
-if str(MODULE_DIRECTORY) not in sys.path:
-    sys.path.insert(0, str(MODULE_DIRECTORY))
-
-from build_clip_manifest import parse_args
+from step1.clip_manifest import parse_args
 from project_paths import ALPASIM_DATA_ROOT, MANIFEST_ROOT, REPORT_ROOT
 
 
 class BuildClipManifestPathTests(unittest.TestCase):
     def test_default_paths_come_from_project_configuration(self):
-        with patch.object(sys, "argv", ["build_clip_manifest.py"]):
+        with patch.object(sys, "argv", ["clip_manifest.py"]):
             args = parse_args()
 
         self.assertEqual(args.dataset_root, ALPASIM_DATA_ROOT)
@@ -38,7 +34,7 @@ class BuildClipManifestPathTests(unittest.TestCase):
         summary_output = Path("/portable/output/summary.json")
 
         argv = [
-            "build_clip_manifest.py",
+            "clip_manifest.py",
             "--dataset-root",
             str(dataset_root),
             "--manifest-output",

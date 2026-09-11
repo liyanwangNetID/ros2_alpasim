@@ -13,13 +13,9 @@ from pathlib import Path
 
 
 
-MODULE_DIRECTORY = Path(__file__).resolve().parent.parent
-if str(MODULE_DIRECTORY) not in sys.path:
-    sys.path.insert(0, str(MODULE_DIRECTORY))
-
 from project_paths import ALPASIM_DATA_ROOT
 
-from clip_reader import (  # noqa: E402
+from step2.clip_reader import (  # noqa: E402
     CAMERA_NAMES,
     DrivingClipReader,
     stamp_mapping_to_ns,

@@ -15,8 +15,8 @@ import math
 from dataclasses import dataclass
 from typing import Sequence
 
-from coordinate_utils import Point2D, normalize_angle
-from vector_map_reader import Lane, VectorMapReader, polyline_length
+from step2.coordinate_utils import Point2D, normalize_angle
+from step2.vector_map_reader import Lane, VectorMapReader, polyline_length
 
 _EPSILON = 1e-9
 

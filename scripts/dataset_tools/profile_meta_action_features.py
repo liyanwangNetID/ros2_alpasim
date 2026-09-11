@@ -27,8 +27,8 @@ MODULE_DIRECTORY = Path(__file__).resolve().parent
 if str(MODULE_DIRECTORY) not in sys.path:
     sys.path.insert(0, str(MODULE_DIRECTORY))
 
-from clip_reader import DrivingClipReader, stamp_mapping_to_ns  # noqa: E402
-from coordinate_utils import pose2d_from_pose_mapping  # noqa: E402
+from step2.clip_reader import DrivingClipReader, stamp_mapping_to_ns  # noqa: E402
+from step2.coordinate_utils import pose2d_from_pose_mapping  # noqa: E402
 from project_paths import (  # noqa: E402
     ALPASIM_DATA_ROOT,
     ANNOTATION_ROOT,

@@ -8,11 +8,7 @@ import unittest
 from pathlib import Path
 
 
-MODULE_DIRECTORY = Path(__file__).resolve().parent.parent
-if str(MODULE_DIRECTORY) not in sys.path:
-    sys.path.insert(0, str(MODULE_DIRECTORY))
-
-from temporal_index import (  # noqa: E402
+from step2.temporal_index import (  # noqa: E402
     TemporalIndex,
     TemporalIndexError,
     TemporalMatchError,

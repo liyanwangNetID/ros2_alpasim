@@ -24,7 +24,7 @@ from actor_box_projection_v01 import actor_box_corners_in_rig
 from actor_observability_rules_v01 import evaluate_geometric_observability
 from camera_facing_box_surfaces_v01 import prepare_camera_facing_box_triangles
 from camera_projection_v01 import load_camera_calibration
-from clip_reader import DrivingClipReader
+from step2.clip_reader import DrivingClipReader
 from ftheta_triangle_vertex_projection_v01 import (
     project_ftheta_triangle_vertices,
 )

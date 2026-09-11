@@ -18,7 +18,7 @@ from actor_camera_occlusion_from_geometry_v01 import (
     build_actor_camera_occlusion_from_geometry,
 )
 from camera_projection_v01 import load_camera_calibration
-from clip_reader import DrivingClipReader
+from step2.clip_reader import DrivingClipReader
 from occlusion_resolution_profile_v01 import (
     build_occlusion_resolution_profile,
 )

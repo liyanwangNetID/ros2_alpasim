@@ -9,10 +9,6 @@ import unittest
 from pathlib import Path
 
 
-MODULE_DIRECTORY = Path(__file__).resolve().parent.parent
-
-if str(MODULE_DIRECTORY) not in sys.path:
-    sys.path.insert(0, str(MODULE_DIRECTORY))
 
 
 from project_paths import SCHEMA_ROOT  # noqa: E402

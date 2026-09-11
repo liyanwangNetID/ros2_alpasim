@@ -36,7 +36,7 @@ from anchor_selector import (  # noqa: E402
     AnchorSelector,
     AnchorSelectorConfig,
 )
-from clip_reader import DrivingClipReader  # noqa: E402
+from step2.clip_reader import DrivingClipReader  # noqa: E402
 from project_paths import (  # noqa: E402
     ALPASIM_DATA_ROOT,
     ANNOTATION_ROOT,

@@ -8,11 +8,8 @@ import sys
 import unittest
 from pathlib import Path
 
-MODULE_DIRECTORY = Path(__file__).resolve().parent.parent
-if str(MODULE_DIRECTORY) not in sys.path:
-    sys.path.insert(0, str(MODULE_DIRECTORY))
 
-from coordinate_utils import Pose2D, yaw_to_quaternion  # noqa: E402
+from step2.coordinate_utils import Pose2D, yaw_to_quaternion  # noqa: E402
 from scene_fact_geometry_v01 import (  # noqa: E402
     classify_geometric_region,
     compute_snapshot_actor_geometries,

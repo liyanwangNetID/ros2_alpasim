@@ -31,13 +31,13 @@ MODULE_DIRECTORY = Path(__file__).resolve().parent
 if str(MODULE_DIRECTORY) not in sys.path:
     sys.path.insert(0, str(MODULE_DIRECTORY))
 
-from clip_reader import DrivingClipReader  # noqa: E402
+from step2.clip_reader import DrivingClipReader  # noqa: E402
 from lane_matcher import (  # noqa: E402
     LaneMatcher,
     LaneMatcherConfig,
     trajectory_poses_from_gt_points,
 )
-from vector_map_reader import VectorMapReader  # noqa: E402
+from step2.vector_map_reader import VectorMapReader  # noqa: E402
 from project_paths import (  # noqa: E402
     ALPASIM_DATA_ROOT,
     ANNOTATION_ROOT,

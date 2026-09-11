@@ -21,7 +21,7 @@ from actor_depth_zbuffer_v01 import ActorDepthRasterInput, resolve_actor_depth_z
 from actor_visibility_statistics_v01 import calculate_actor_visibility_statistics
 from camera_facing_box_surfaces_v01 import prepare_camera_facing_box_triangles
 from camera_projection_v01 import load_camera_calibration
-from clip_reader import DrivingClipReader
+from step2.clip_reader import DrivingClipReader
 from project_paths import ALPASIM_DATA_ROOT
 
 CASES = (

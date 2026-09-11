@@ -28,7 +28,7 @@ from actor_geometric_occlusion_from_geometry_v01 import (
     build_actor_geometric_occlusion_from_geometry,
 )
 from camera_projection_v01 import load_camera_calibration
-from clip_reader import DrivingClipReader
+from step2.clip_reader import DrivingClipReader
 from project_paths import ALPASIM_DATA_ROOT, ANNOTATION_ROOT
 from scene_fact_schema_v01 import CAMERA_NAMES
 

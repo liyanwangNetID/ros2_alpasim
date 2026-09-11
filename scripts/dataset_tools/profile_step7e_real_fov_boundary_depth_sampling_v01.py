@@ -17,7 +17,7 @@ from typing import Any
 from actor_box_projection_v01 import actor_box_corners_in_rig
 from camera_facing_box_surfaces_v01 import prepare_camera_facing_box_triangles
 from camera_projection_v01 import load_camera_calibration
-from clip_reader import DrivingClipReader
+from step2.clip_reader import DrivingClipReader
 from fov_subdivided_triangle_depth_samples_v01 import (
     sample_fov_subdivided_camera_triangle_depths,
 )

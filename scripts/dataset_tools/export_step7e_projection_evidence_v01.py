@@ -19,7 +19,7 @@ from typing import Any
 
 from actor_box_image_projection_v01 import project_actor_box_to_camera
 from camera_projection_v01 import load_camera_calibration
-from clip_reader import DrivingClipReader
+from step2.clip_reader import DrivingClipReader
 from project_paths import ALPASIM_DATA_ROOT, ANNOTATION_ROOT
 from scene_fact_schema_v01 import CAMERA_NAMES
 

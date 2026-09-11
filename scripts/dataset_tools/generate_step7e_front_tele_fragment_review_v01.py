@@ -21,7 +21,7 @@ from typing import Any, Callable
 
 from PIL import Image, ImageDraw, ImageFont
 
-from clip_reader import DrivingClipReader
+from step2.clip_reader import DrivingClipReader
 from project_paths import ALPASIM_DATA_ROOT, ANNOTATION_ROOT
 
 INPUT_PATH = ANNOTATION_ROOT / "step7e_projection_evidence_v01.jsonl"

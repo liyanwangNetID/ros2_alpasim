@@ -7,9 +7,6 @@ import sys
 import unittest
 from pathlib import Path
 
-MODULE_DIRECTORY = Path(__file__).resolve().parent.parent
-if str(MODULE_DIRECTORY) not in sys.path:
-    sys.path.insert(0, str(MODULE_DIRECTORY))
 
 from adaptive_ftheta_sampling_v01 import (  # noqa: E402
     point_to_segment_distance_px,

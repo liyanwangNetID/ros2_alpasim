@@ -4,9 +4,6 @@ import sys
 import unittest
 from pathlib import Path
 
-MODULE_DIRECTORY = Path(__file__).resolve().parent.parent
-if str(MODULE_DIRECTORY) not in sys.path:
-    sys.path.insert(0, str(MODULE_DIRECTORY))
 
 from scan_longitudinal_action_thresholds import classify, evaluate, low_speed_duration_key
 

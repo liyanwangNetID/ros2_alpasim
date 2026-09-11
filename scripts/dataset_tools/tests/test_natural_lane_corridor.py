@@ -6,9 +6,6 @@ import sys
 import unittest
 from pathlib import Path
 
-MODULE_DIRECTORY = Path(__file__).resolve().parent.parent
-if str(MODULE_DIRECTORY) not in sys.path:
-    sys.path.insert(0, str(MODULE_DIRECTORY))
 
 from natural_lane_corridor import (
     NaturalCorridorConfig,
@@ -19,7 +16,7 @@ from natural_lane_corridor import (
     evaluate_branch_candidates,
     recover_boundary_branch_comparisons,
 )
-from vector_map_reader import VectorMapReader
+from step2.vector_map_reader import VectorMapReader
 
 
 def polyline(points):

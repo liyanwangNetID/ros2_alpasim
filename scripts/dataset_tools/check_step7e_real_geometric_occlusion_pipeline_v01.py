@@ -14,7 +14,7 @@ from actor_geometric_occlusion_from_geometry_v01 import (
     build_actor_geometric_occlusion_from_geometry,
 )
 from camera_projection_v01 import load_camera_calibration
-from clip_reader import DrivingClipReader
+from step2.clip_reader import DrivingClipReader
 from profile_step7e_multicase_raster_stability_v01 import (
     exact_inputs,
     split_anchor_id,

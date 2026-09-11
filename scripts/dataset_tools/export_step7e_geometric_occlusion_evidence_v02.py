@@ -29,7 +29,7 @@ from export_step7e_geometric_occlusion_evidence_v01 import (
     load_camera_inputs,
     read_keyframes,
 )
-from clip_reader import DrivingClipReader
+from step2.clip_reader import DrivingClipReader
 from project_paths import ALPASIM_DATA_ROOT, ANNOTATION_ROOT
 
 

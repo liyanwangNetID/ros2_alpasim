@@ -24,7 +24,7 @@ from camera_facing_box_surfaces_v01 import (
     prepare_camera_facing_box_triangles,
 )
 from camera_projection_v01 import load_camera_calibration
-from clip_reader import DrivingClipReader
+from step2.clip_reader import DrivingClipReader
 from profile_step7e_multicase_raster_stability_v01 import (
     actor_id,
     exact_inputs,

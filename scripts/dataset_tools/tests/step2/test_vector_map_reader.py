@@ -9,13 +9,9 @@ import sys
 import unittest
 from pathlib import Path
 
-MODULE_DIRECTORY = Path(__file__).resolve().parent.parent
-if str(MODULE_DIRECTORY) not in sys.path:
-    sys.path.insert(0, str(MODULE_DIRECTORY))
-
-from coordinate_utils import Point2D  # noqa: E402
+from step2.coordinate_utils import Point2D  # noqa: E402
 from project_paths import ALPASIM_DATA_ROOT  # noqa: E402
-from vector_map_reader import (  # noqa: E402
+from step2.vector_map_reader import (  # noqa: E402
     VectorMapError,
     VectorMapReader,
     build_lane_polygon,

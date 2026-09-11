@@ -16,7 +16,7 @@ from actor_export_anchor_snapshot_coverage_v01 import (
     summarize_actor_export_anchor_snapshot_coverage,
 )
 from actor_geometric_occlusion_export_v02 import SCHEMA_VERSION
-from clip_reader import DrivingClipReader
+from step2.clip_reader import DrivingClipReader
 from export_step7e_geometric_occlusion_evidence_v01 import read_keyframes
 from project_paths import ALPASIM_DATA_ROOT, ANNOTATION_ROOT
 from step7e_v02_summary_anchor_coverage_v01 import (

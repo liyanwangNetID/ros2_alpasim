@@ -12,7 +12,7 @@ import math
 from dataclasses import asdict, dataclass
 from typing import Any, Mapping
 
-from coordinate_utils import (
+from step2.coordinate_utils import (
     Pose2D,
     map_pose_to_anchor_ego,
     map_vector_to_anchor_ego,

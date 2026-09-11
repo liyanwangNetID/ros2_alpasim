@@ -8,9 +8,6 @@ import sys
 import unittest
 from pathlib import Path
 
-MODULE_DIRECTORY = Path(__file__).resolve().parent.parent
-if str(MODULE_DIRECTORY) not in sys.path:
-    sys.path.insert(0, str(MODULE_DIRECTORY))
 
 from camera_projection_v01 import Vector3  # noqa: E402
 from ftheta_fov_clipping_v01 import (  # noqa: E402

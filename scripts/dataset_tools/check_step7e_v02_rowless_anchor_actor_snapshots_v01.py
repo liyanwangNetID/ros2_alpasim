@@ -15,7 +15,7 @@ from collections import Counter
 from actor_export_anchor_coverage_summary_v01 import (
     summarize_actor_export_anchor_coverage,
 )
-from clip_reader import DrivingClipReader
+from step2.clip_reader import DrivingClipReader
 from export_step7e_geometric_occlusion_evidence_v01 import read_keyframes
 from project_paths import ALPASIM_DATA_ROOT, ANNOTATION_ROOT
 

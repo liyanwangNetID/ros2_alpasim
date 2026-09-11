@@ -12,14 +12,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from clip_reader import DrivingClipReader
+from step2.clip_reader import DrivingClipReader
 from navigation_map_context_v01 import (
     FEATURE_FORMAT_VERSION,
     PROFILER_VERSION,
     extract_navigation_map_context,
 )
 from navigation_route_features_v01 import valid_local_points
-from vector_map_reader import VectorMapReader
+from step2.vector_map_reader import VectorMapReader
 from project_paths import (
     ALPASIM_DATA_ROOT,
     ANNOTATION_ROOT,

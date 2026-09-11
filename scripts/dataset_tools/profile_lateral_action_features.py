@@ -30,15 +30,15 @@ MODULE_DIRECTORY = Path(__file__).resolve().parent
 if str(MODULE_DIRECTORY) not in sys.path:
     sys.path.insert(0, str(MODULE_DIRECTORY))
 
-from clip_reader import DrivingClipReader  # noqa: E402
-from coordinate_utils import (  # noqa: E402
+from step2.clip_reader import DrivingClipReader  # noqa: E402
+from step2.coordinate_utils import (  # noqa: E402
     Point2D,
     map_point_to_anchor_ego,
     normalize_angle,
     pose2d_from_pose_mapping,
     unwrap_angles,
 )
-from vector_map_reader import VectorMapReader  # noqa: E402
+from step2.vector_map_reader import VectorMapReader  # noqa: E402
 from natural_lane_corridor import (  # noqa: E402
     NaturalCorridorConfig,
     assess_branch_candidate_reliability,

@@ -16,7 +16,7 @@ from typing import Any
 from actor_box_projection_v01 import actor_box_corners_in_rig
 from camera_facing_box_surfaces_v01 import prepare_camera_facing_box_triangles
 from camera_projection_v01 import load_camera_calibration
-from clip_reader import DrivingClipReader
+from step2.clip_reader import DrivingClipReader
 from project_paths import ALPASIM_DATA_ROOT
 from triangle_angular_fov_subdivision_v01 import subdivide_triangle_to_angular_fov
 

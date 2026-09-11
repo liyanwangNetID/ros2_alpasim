@@ -8,18 +8,15 @@ import sys
 import unittest
 from pathlib import Path
 
-MODULE_DIRECTORY = Path(__file__).resolve().parent.parent
-if str(MODULE_DIRECTORY) not in sys.path:
-    sys.path.insert(0, str(MODULE_DIRECTORY))
 
-from clip_reader import DrivingClipReader  # noqa: E402
+from step2.clip_reader import DrivingClipReader  # noqa: E402
 from lane_matcher import (  # noqa: E402
     LaneMatcher,
     LaneMatcherConfig,
     TrajectoryPose,
     trajectory_poses_from_gt_points,
 )
-from vector_map_reader import VectorMapReader  # noqa: E402
+from step2.vector_map_reader import VectorMapReader  # noqa: E402
 from project_paths import ALPASIM_DATA_ROOT  # noqa: E402
 
 

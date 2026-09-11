@@ -17,8 +17,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from clip_reader import DrivingClipReader
-from coordinate_utils import Point2D
+from step2.clip_reader import DrivingClipReader
+from step2.coordinate_utils import Point2D
 from lane_matcher import LaneMatcher
 from natural_lane_corridor import (
     NaturalCorridorConfig,
@@ -32,7 +32,7 @@ from natural_corridor_family_guard_v01 import (
 )
 from navigation_map_context_v01 import local_route_to_map_trajectory
 from navigation_route_features_v01 import valid_local_points
-from vector_map_reader import VectorMapReader
+from step2.vector_map_reader import VectorMapReader
 from project_paths import (
     ALPASIM_DATA_ROOT,
     ANNOTATION_ROOT,

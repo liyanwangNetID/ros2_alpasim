@@ -28,8 +28,8 @@ MODULE_DIRECTORY = Path(__file__).resolve().parent
 if str(MODULE_DIRECTORY) not in sys.path:
     sys.path.insert(0, str(MODULE_DIRECTORY))
 
-from clip_reader import DrivingClipReader  # noqa: E402
-from coordinate_utils import Point2D, normalize_angle, pose2d_from_pose_mapping  # noqa: E402
+from step2.clip_reader import DrivingClipReader  # noqa: E402
+from step2.coordinate_utils import Point2D, normalize_angle, pose2d_from_pose_mapping  # noqa: E402
 from natural_lane_corridor import (  # noqa: E402
     NaturalCorridorConfig,
     NaturalLaneCorridor,
@@ -37,7 +37,7 @@ from natural_lane_corridor import (  # noqa: E402
     compare_actual_lane_sequence,
     recover_boundary_branch_comparisons,
 )
-from vector_map_reader import VectorMapReader  # noqa: E402
+from step2.vector_map_reader import VectorMapReader  # noqa: E402
 from project_paths import (  # noqa: E402
     ALPASIM_DATA_ROOT,
     INTERMEDIATE_ROOT,

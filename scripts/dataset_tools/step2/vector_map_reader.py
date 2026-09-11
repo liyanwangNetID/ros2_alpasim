@@ -12,7 +12,7 @@ import math
 from dataclasses import dataclass
 from typing import Any, Iterable, Mapping, Sequence
 
-from coordinate_utils import Point2D, normalize_angle
+from step2.coordinate_utils import Point2D, normalize_angle
 
 
 _EPSILON = 1e-12

@@ -18,7 +18,7 @@ from actor_box_projection_v01 import actor_box_corners_in_rig
 from actor_camera_surface_depth_raster_v01 import build_actor_camera_surface_depth_raster
 from camera_facing_box_surfaces_v01 import prepare_camera_facing_box_triangles
 from camera_projection_v01 import load_camera_calibration
-from clip_reader import DrivingClipReader
+from step2.clip_reader import DrivingClipReader
 from project_paths import ALPASIM_DATA_ROOT
 
 ANCHOR_ID = "test_clip_001_9306612661000"

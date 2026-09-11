@@ -9,9 +9,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from types import SimpleNamespace
 
-MODULE_DIRECTORY = Path(__file__).resolve().parent.parent
-if str(MODULE_DIRECTORY) not in sys.path:
-    sys.path.insert(0, str(MODULE_DIRECTORY))
 
 from anchor_selector import (  # noqa: E402
     AnchorEvaluation,

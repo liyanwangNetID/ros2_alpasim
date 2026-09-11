@@ -7,9 +7,6 @@ import sys
 import unittest
 from pathlib import Path
 
-MODULE_DIRECTORY = Path(__file__).resolve().parent.parent
-if str(MODULE_DIRECTORY) not in sys.path:
-    sys.path.insert(0, str(MODULE_DIRECTORY))
 
 from actor_box_image_projection_v01 import (  # noqa: E402
     BOX_EDGE_INDEX_PAIRS,
