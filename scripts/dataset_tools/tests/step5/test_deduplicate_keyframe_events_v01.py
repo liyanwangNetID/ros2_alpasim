@@ -1,13 +1,8 @@
 #!/usr/bin/env python3
-import sys
 import unittest
-from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
 
-from keyframe_event_dedup_rules_v01 import normalize_anchor_events
+from step5.deduplicate_keyframe_events_v01 import normalize_anchor_events
 
 
 class DedupRuleTests(unittest.TestCase):

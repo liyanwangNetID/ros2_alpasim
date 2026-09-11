@@ -56,6 +56,10 @@ DEFAULT_CANDIDATE_ANCHORS = (
 DEFAULT_ANCHOR_CONTRACT = (
     MANIFEST_ROOT / "candidate_anchor_contract_v0.1.json"
 )
+DEFAULT_META_ACTION_CONTRACT = (
+    MANIFEST_ROOT / "meta_action_contract_v0.2.json"
+)
+META_ACTION_CONTRACT_VERSION = "0.2"
 EXPECTED_CONTRACT_VERSION = "0.1"
 EXPECTED_CONTRACT_PRODUCER_STEP = 3
 
@@ -277,6 +281,11 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=DEFAULT_ANCHOR_CONTRACT,
     )
+    parser.add_argument(
+        "--meta-action-contract",
+        type=Path,
+        default=DEFAULT_META_ACTION_CONTRACT,
+    )
     parser.add_argument("--force", action="store_true")
     parser.add_argument(
         "--reuse-existing-features",
@@ -383,6 +392,30 @@ def main() -> int:
     )
     output_sha256 = hashlib.sha256(output_text.encode("utf-8")).hexdigest()
 
+    meta_action_contract = {
+        "contract_version": META_ACTION_CONTRACT_VERSION,
+        "producer_step": 4,
+        "label_format_version": LABEL_FORMAT_VERSION,
+        "generator_version": GENERATOR_VERSION,
+        "rule_version": RULE_VERSION,
+        "candidate_anchor_contract": str(
+            args.anchor_contract
+        ),
+        "candidate_anchor_sha256": str(
+            anchor_contract["candidate_anchor_sha256"]
+        ),
+        "candidate_anchor_count": int(
+            anchor_contract["candidate_anchor_count"]
+        ),
+        "meta_action_count": len(records),
+        "meta_action_sha256": output_sha256,
+        "lateral_action_counts": dict(lateral_counts),
+        "longitudinal_action_counts": dict(
+            longitudinal_counts
+        ),
+        "overall_quality_counts": dict(quality_counts),
+    }
+
     summary = {
         "label_format_version": LABEL_FORMAT_VERSION,
         "generator_version": GENERATOR_VERSION,
@@ -428,9 +461,23 @@ def main() -> int:
         json.dumps(summary, ensure_ascii=False, indent=2) + "\n",
         args.force,
     )
+    atomic_write(
+        args.meta_action_contract,
+        json.dumps(
+            meta_action_contract,
+            ensure_ascii=False,
+            indent=2,
+        )
+        + "\n",
+        args.force,
+    )
 
     print("Output:", args.output)
     print("Summary:", args.summary_output)
+    print(
+        "Meta-action contract:",
+        args.meta_action_contract,
+    )
     print("Label SHA-256:", output_sha256)
     print("Anchor count:", len(records))
     print("Lateral counts:", dict(lateral_counts))

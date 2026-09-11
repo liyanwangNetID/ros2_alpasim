@@ -1,13 +1,8 @@
 #!/usr/bin/env python3
-import sys
 import unittest
-from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
 
-from keyframe_selection_rules_v01 import select_with_clip_preference
+from step5.select_keyframes_v01 import select_with_clip_preference
 
 
 class SelectionRuleTests(unittest.TestCase):

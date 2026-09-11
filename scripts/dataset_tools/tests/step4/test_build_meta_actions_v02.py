@@ -18,6 +18,7 @@ from project_paths import (
 from step4.build_meta_actions_v02 import (
     DEFAULT_ANCHOR_CONTRACT,
     DEFAULT_CANDIDATE_ANCHORS,
+    DEFAULT_META_ACTION_CONTRACT,
     parse_args,
     validate_candidate_anchor_contract,
 )
@@ -140,6 +141,14 @@ class CandidateAnchorContractTests(unittest.TestCase):
         self.assertEqual(
             DEFAULT_ANCHOR_CONTRACT,
             args.anchor_contract,
+        )
+        self.assertEqual(
+            args.meta_action_contract,
+            MANIFEST_ROOT / "meta_action_contract_v0.2.json",
+        )
+        self.assertEqual(
+            DEFAULT_META_ACTION_CONTRACT,
+            args.meta_action_contract,
         )
 
 

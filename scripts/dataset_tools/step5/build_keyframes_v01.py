@@ -12,21 +12,33 @@ import subprocess
 import sys
 from pathlib import Path
 
-SCRIPT_DIR = Path(__file__).resolve().parent
+PROJECT_DIR = Path(__file__).resolve().parent.parent
 
 
 def step5_commands(*, force: bool, reuse_existing_events: bool) -> tuple[tuple[str, ...], ...]:
     commands: list[tuple[str, ...]] = []
 
     if not reuse_existing_events:
-        detect = [sys.executable, "detect_keyframe_events_v01.py"]
-        deduplicate = [sys.executable, "deduplicate_keyframe_events_v01.py"]
+        detect = [
+            sys.executable,
+            "-m",
+            "step5.detect_keyframe_events_v01",
+        ]
+        deduplicate = [
+            sys.executable,
+            "-m",
+            "step5.deduplicate_keyframe_events_v01",
+        ]
         if force:
             detect.append("--force")
             deduplicate.append("--force")
         commands.extend((tuple(detect), tuple(deduplicate)))
 
-    select = [sys.executable, "select_keyframes_v01.py"]
+    select = [
+        sys.executable,
+        "-m",
+        "step5.select_keyframes_v01",
+    ]
     if force:
         select.append("--force")
     commands.append(tuple(select))
@@ -49,7 +61,7 @@ def run_step5_pipeline(*, force: bool, reuse_existing_events: bool) -> None:
 
         completed = subprocess.run(
             command,
-            cwd=SCRIPT_DIR,
+            cwd=PROJECT_DIR,
             check=False,
         )
         if completed.returncode != 0:
