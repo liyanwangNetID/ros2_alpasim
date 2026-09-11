@@ -19,8 +19,8 @@ from typing import Any
 
 from step2.clip_reader import DrivingClipReader
 from step2.coordinate_utils import Point2D
-from lane_matcher import LaneMatcher
-from natural_lane_corridor import (
+from step4.lane_matcher import LaneMatcher
+from step4.natural_lane_corridor import (
     NaturalCorridorConfig,
     assess_branch_candidate_reliability,
     build_natural_lane_corridor,

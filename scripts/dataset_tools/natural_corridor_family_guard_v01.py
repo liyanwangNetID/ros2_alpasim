@@ -13,7 +13,7 @@ import math
 from dataclasses import dataclass, replace
 from typing import Mapping, Sequence
 
-from natural_lane_corridor import (
+from step4.natural_lane_corridor import (
     BranchCandidate,
     NaturalCorridorConfig,
     evaluate_branch_candidates,

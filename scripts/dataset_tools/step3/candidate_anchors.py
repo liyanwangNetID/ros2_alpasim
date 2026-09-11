@@ -408,6 +408,10 @@ DEFAULT_PER_CLIP_OUTPUT = (
 DEFAULT_SUMMARY_OUTPUT = (
     REPORT_ROOT / "candidate_anchor_summary_v0.1.json"
 )
+DEFAULT_CONTRACT_OUTPUT = (
+    MANIFEST_ROOT / "candidate_anchor_contract_v0.1.json"
+)
+CONTRACT_VERSION = "0.1"
 
 
 def utc_now_iso() -> str:
@@ -681,6 +685,38 @@ def aggregate_summary(
     }
 
 
+
+def candidate_anchor_contract(
+    *,
+    anchor_text: str,
+    summary: dict[str, Any],
+) -> dict[str, Any]:
+    anchor_digest = hashlib.sha256(
+        anchor_text.encode("utf-8")
+    ).hexdigest()
+
+    clips = summary["clips"]
+    anchors = summary["anchors"]
+
+    return {
+        "contract_version": CONTRACT_VERSION,
+        "producer_step": 3,
+        "anchor_format_version": ANCHOR_FORMAT_VERSION,
+        "anchor_selector_version": SCRIPT_VERSION,
+        "candidate_anchor_count": int(
+            anchors["selected_total"]
+        ),
+        "candidate_anchor_sha256": anchor_digest,
+        "processed_clip_count": int(clips["processed"]),
+        "clips_with_selected_anchors": int(
+            clips["with_selected_anchors"]
+        ),
+        "clips_without_selected_anchors": int(
+            clips["without_selected_anchors"]
+        ),
+    }
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Build camera-driven candidate anchors for AlpaSim clips."
@@ -709,6 +745,11 @@ def parse_args() -> argparse.Namespace:
         "--summary-output",
         type=Path,
         default=DEFAULT_SUMMARY_OUTPUT,
+    )
+    parser.add_argument(
+        "--contract-output",
+        type=Path,
+        default=DEFAULT_CONTRACT_OUTPUT,
     )
     parser.add_argument(
         "--limit-clips",
@@ -807,15 +848,25 @@ def main() -> int:
         for record in clip_records
     )
     summary_text = json.dumps(summary, indent=2, ensure_ascii=False) + "\n"
+    contract = candidate_anchor_contract(
+        anchor_text=anchor_text,
+        summary=summary,
+    )
+    contract_text = (
+        json.dumps(contract, indent=2, ensure_ascii=False)
+        + "\n"
+    )
 
     atomic_write_text(args.anchor_output, anchor_text, args.force)
     atomic_write_text(args.per_clip_output, per_clip_text, args.force)
     atomic_write_text(args.summary_output, summary_text, args.force)
+    atomic_write_text(args.contract_output, contract_text, args.force)
 
-    anchor_digest = hashlib.sha256(anchor_text.encode("utf-8")).hexdigest()
+    anchor_digest = contract["candidate_anchor_sha256"]
     print("Anchor output:", args.anchor_output)
     print("Per-clip report:", args.per_clip_output)
     print("Summary report:", args.summary_output)
+    print("Contract:", args.contract_output)
     print("Anchor SHA-256:", anchor_digest)
     print("Clips processed:", summary["clips"]["processed"])
     print("Processing errors:", summary["clips"]["processing_error_count"])

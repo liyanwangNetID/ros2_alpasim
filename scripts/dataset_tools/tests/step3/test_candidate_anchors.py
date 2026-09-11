@@ -37,6 +37,10 @@ class BuildCandidateAnchorsPathTests(unittest.TestCase):
             args.summary_output,
             REPORT_ROOT / "candidate_anchor_summary_v0.1.json",
         )
+        self.assertEqual(
+            args.contract_output,
+            MANIFEST_ROOT / "candidate_anchor_contract_v0.1.json",
+        )
         self.assertIsNone(args.limit_clips)
         self.assertFalse(args.force)
 
@@ -53,6 +57,8 @@ class BuildCandidateAnchorsPathTests(unittest.TestCase):
             "/portable/output/per_clip.jsonl",
             "--summary-output",
             "/portable/output/summary.json",
+            "--contract-output",
+            "/portable/output/contract.json",
             "--limit-clips",
             "3",
             "--force",
@@ -74,6 +80,10 @@ class BuildCandidateAnchorsPathTests(unittest.TestCase):
         self.assertEqual(
             args.summary_output,
             Path("/portable/output/summary.json"),
+        )
+        self.assertEqual(
+            args.contract_output,
+            Path("/portable/output/contract.json"),
         )
         self.assertEqual(args.limit_clips, 3)
         self.assertTrue(args.force)

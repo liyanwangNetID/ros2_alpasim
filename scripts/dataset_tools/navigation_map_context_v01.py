@@ -7,8 +7,8 @@ from collections import Counter
 from typing import Any, Mapping, Sequence
 
 from step2.coordinate_utils import Point2D, Pose2D, anchor_ego_point_to_map
-from lane_matcher import LaneMatcher, TrajectoryPose
-from natural_lane_corridor import (
+from step4.lane_matcher import LaneMatcher, TrajectoryPose
+from step4.natural_lane_corridor import (
     NaturalCorridorConfig,
     build_natural_lane_corridor,
     compare_actual_lane_sequence,
