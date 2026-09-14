@@ -11,7 +11,9 @@ from pathlib import Path
 import pytest
 
 from step5.select_keyframes_v01 import (
+    DEFAULT_KEYFRAME_CONTRACT,
     REFERENCE_ANCHOR_COUNT,
+    parse_args,
     scaled_quota,
     selection_quotas,
     validate_meta_action_contract,
@@ -128,6 +130,27 @@ def write_contract_inputs(
     )
 
     return contract_path, meta_path
+
+
+def test_default_keyframe_contract_path():
+    from unittest.mock import patch
+    import sys
+
+    from project_paths import MANIFEST_ROOT
+
+    with patch.object(
+        sys,
+        "argv",
+        ["select_keyframes_v01.py"],
+    ):
+        args = parse_args()
+
+    expected = (
+        MANIFEST_ROOT / "keyframe_contract_v0.1.json"
+    )
+
+    assert args.keyframe_contract == expected
+    assert DEFAULT_KEYFRAME_CONTRACT == expected
 
 
 def test_valid_meta_action_contract_is_accepted():

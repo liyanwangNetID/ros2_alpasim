@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Any
 
 from step2.clip_reader import DrivingClipReader
-from navigation_route_features_v01 import (
+from step6.navigation_route_features_v01 import (
     FEATURE_FORMAT_VERSION,
     PROFILER_VERSION,
     route_geometry_features,

@@ -1,15 +1,10 @@
 #!/usr/bin/env python3
 import math
-import sys
 import unittest
-from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
 
 from step2.coordinate_utils import Pose2D
-from navigation_map_context_v01 import local_route_to_map_trajectory
+from step6.profile_navigation_branch_context_v01 import local_route_to_map_trajectory
 
 
 class NavigationMapContextTests(unittest.TestCase):

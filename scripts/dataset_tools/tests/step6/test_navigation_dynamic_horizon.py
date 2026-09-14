@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
+"""Current frozen Navigation rule tests."""
+
+from __future__ import annotations
+
 import math
-import sys
 import unittest
-from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-from navigation_rules_v01 import classify_navigation, dynamic_upcoming_distance_m
-
+from step6.generate_navigation_v01 import (
+    classify_navigation,
+    dynamic_upcoming_distance_m,
+)
 
 def route(signed_deg=0.0, lookahead=80.0, status='usable'):
     return {
@@ -75,6 +75,3 @@ class NavigationRuleV012Tests(unittest.TestCase):
         self.assertIn('intersection', classify_navigation(route(), branch(intersection_distance=45.0, speed=5.0))['text'])
         self.assertEqual(classify_navigation(route(), branch(intersection_distance=45.0, speed=2.0))['text'], 'Continue along the road.')
 
-
-if __name__ == '__main__':
-    unittest.main(verbosity=2)

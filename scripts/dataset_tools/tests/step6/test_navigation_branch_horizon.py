@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
+"""Current frozen Navigation rule tests."""
+
+from __future__ import annotations
+
 import math
-import sys
 import unittest
-from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-from navigation_rules_v01 import classify_navigation
-
+from step6.generate_navigation_v01 import (
+    classify_navigation,
+)
 
 def route(signed_deg=30.0, lookahead=80.0):
     return {
@@ -63,6 +62,3 @@ class NavigationRuleV013Tests(unittest.TestCase):
             'Turn left at the upcoming intersection.',
         )
 
-
-if __name__ == '__main__':
-    unittest.main(verbosity=2)

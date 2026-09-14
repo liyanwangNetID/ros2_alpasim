@@ -176,6 +176,10 @@ DEFAULT_SUMMARY = (
 DEFAULT_META_ACTION_CONTRACT = (
     MANIFEST_ROOT / "meta_action_contract_v0.2.json"
 )
+DEFAULT_KEYFRAME_CONTRACT = (
+    MANIFEST_ROOT / "keyframe_contract_v0.1.json"
+)
+KEYFRAME_CONTRACT_VERSION = "0.1"
 EXPECTED_META_ACTION_CONTRACT_VERSION = "0.2"
 EXPECTED_META_ACTION_PRODUCER_STEP = 4
 
@@ -310,6 +314,11 @@ def parse_args() -> argparse.Namespace:
         "--meta-action-contract",
         type=Path,
         default=DEFAULT_META_ACTION_CONTRACT,
+    )
+    parser.add_argument(
+        "--keyframe-contract",
+        type=Path,
+        default=DEFAULT_KEYFRAME_CONTRACT,
     )
     parser.add_argument("--force", action="store_true")
     return parser.parse_args()
@@ -470,6 +479,33 @@ def main() -> int:
         for record in output_records
     )
     sha256 = hashlib.sha256(output_text.encode("utf-8")).hexdigest()
+    keyframe_contract = {
+        "contract_version": KEYFRAME_CONTRACT_VERSION,
+        "producer_step": 5,
+        "keyframe_format_version": OUTPUT_FORMAT_VERSION,
+        "selector_version": SELECTOR_VERSION,
+        "rule_version": RULE_VERSION,
+        "meta_action_contract": str(
+            args.meta_action_contract
+        ),
+        "meta_action_sha256": str(
+            meta_action_contract["meta_action_sha256"]
+        ),
+        "candidate_anchor_count": len(candidate_ids),
+        "event_anchor_count": len(events),
+        "keyframe_count": len(output_records),
+        "keyframe_sha256": sha256,
+        "quota_policy": {
+            "mode": "proportional_to_anchor_count",
+            "reference_anchor_count": (
+                quotas["reference_anchor_count"]
+            ),
+            "current_anchor_count": (
+                quotas["anchor_count"]
+            ),
+        },
+    }
+
     summary = {
         "keyframe_format_version": OUTPUT_FORMAT_VERSION,
         "selector_version": SELECTOR_VERSION,
@@ -514,9 +550,20 @@ def main() -> int:
         json.dumps(summary, ensure_ascii=False, indent=2) + "\n",
         args.force,
     )
+    atomic_write(
+        args.keyframe_contract,
+        json.dumps(
+            keyframe_contract,
+            ensure_ascii=False,
+            indent=2,
+        )
+        + "\n",
+        args.force,
+    )
 
     print("Output:", args.output)
     print("Summary:", args.summary_output)
+    print("Keyframe contract:", args.keyframe_contract)
     print("SHA-256:", sha256)
     print("Candidate Anchors:", len(candidate_ids))
     print("Event Anchors retained:", len(events))

@@ -18,8 +18,15 @@ from pathlib import Path
 from typing import Any
 
 from step2.clip_reader import DrivingClipReader
-from step2.coordinate_utils import Point2D
-from step4.lane_matcher import LaneMatcher
+from step2.coordinate_utils import (
+    Point2D,
+    Pose2D,
+    anchor_ego_point_to_map,
+)
+from step4.lane_matcher import (
+    LaneMatcher,
+    TrajectoryPose,
+)
 from step4.natural_lane_corridor import (
     NaturalCorridorConfig,
     assess_branch_candidate_reliability,
@@ -30,8 +37,7 @@ from natural_corridor_family_guard_v01 import (
     FAMILY_GUARD_VERSION,
     evaluate_direction_family_guard,
 )
-from navigation_map_context_v01 import local_route_to_map_trajectory
-from navigation_route_features_v01 import valid_local_points
+from step6.navigation_route_features_v01 import valid_local_points
 from step2.vector_map_reader import VectorMapReader
 from project_paths import (
     ALPASIM_DATA_ROOT,
@@ -69,6 +75,33 @@ def read_records(path: Path) -> list[dict[str, Any]]:
             seen.add(anchor_id)
             result.append(record)
     return sorted(result, key=lambda item: (str(item['clip_id']), int(item['anchor_ns']), str(item['anchor_id'])))
+
+
+def local_route_to_map_trajectory(
+    points: Sequence[tuple[float, float]],
+    anchor_pose: Pose2D,
+    *,
+    stamp_ns: int,
+) -> tuple[TrajectoryPose, ...]:
+    if len(points) < 2:
+        raise ValueError('local route requires at least two points')
+    mapped = [
+        anchor_ego_point_to_map(x, y, anchor_pose.x, anchor_pose.y, anchor_pose.yaw)
+        for x, y in points
+    ]
+    headings: list[float] = []
+    for index, point in enumerate(mapped):
+        if index + 1 < len(mapped):
+            other = mapped[index + 1]
+            heading = math.atan2(other.y - point.y, other.x - point.x)
+        else:
+            other = mapped[index - 1]
+            heading = math.atan2(point.y - other.y, point.x - other.x)
+        headings.append(heading)
+    return tuple(
+        TrajectoryPose(stamp_ns=stamp_ns + index, x=point.x, y=point.y, yaw=headings[index])
+        for index, point in enumerate(mapped)
+    )
 
 
 def cumulative_distances(points: list[tuple[float, float]]) -> list[float]:
