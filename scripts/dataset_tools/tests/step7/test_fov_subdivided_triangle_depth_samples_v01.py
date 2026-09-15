@@ -4,8 +4,8 @@ from dataclasses import dataclass
 
 import pytest
 
-from camera_projection_v01 import Vector3
-from fov_subdivided_triangle_depth_samples_v01 import (
+from step7.camera_projection_v01 import Vector3
+from step7.fov_subdivided_triangle_depth_samples_v01 import (
     sample_fov_subdivided_camera_triangle_depths,
 )
 

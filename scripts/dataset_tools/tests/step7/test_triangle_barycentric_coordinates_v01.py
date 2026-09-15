@@ -4,7 +4,7 @@ import math
 
 import pytest
 
-from triangle_barycentric_coordinates_v01 import (
+from step7.triangle_barycentric_coordinates_v01 import (
     Point2D,
     triangle_barycentric_coordinates,
 )

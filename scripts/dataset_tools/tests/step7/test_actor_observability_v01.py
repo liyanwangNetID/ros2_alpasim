@@ -4,9 +4,9 @@ from dataclasses import replace
 
 import pytest
 
-from actor_box_image_projection_v01 import ActorCameraProjection
-from actor_observability_v01 import aggregate_actor_observability
-from scene_fact_schema_v01 import CAMERA_NAMES, OBSERVABILITY_FORMAT_VERSION
+from step7.actor_box_image_projection_v01 import ActorCameraProjection
+from step7.actor_observability_v01 import aggregate_actor_observability
+from step7.scene_fact_schema_v01 import CAMERA_NAMES, OBSERVABILITY_FORMAT_VERSION
 
 
 def projection(

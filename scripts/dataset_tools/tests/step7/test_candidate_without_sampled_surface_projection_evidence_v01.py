@@ -2,14 +2,14 @@ from dataclasses import replace
 
 import pytest
 
-from actor_box_image_projection_v01 import ActorCameraProjection
-from actor_geometric_occlusion_evidence_v01 import (
+from step7.actor_box_image_projection_v01 import ActorCameraProjection
+from step7.actor_geometric_occlusion_evidence_v01 import (
     ActorGeometricOcclusionEvidence,
 )
-from candidate_without_sampled_surface_projection_evidence_v01 import (
+from step7.candidate_without_sampled_surface_projection_evidence_v01 import (
     build_candidate_without_sampled_surface_projection_evidence,
 )
-from scene_fact_schema_v01 import CAMERA_NAMES
+from step7.scene_fact_schema_v01 import CAMERA_NAMES
 
 
 def projection(camera_name, *, truncated=False, valid=True):

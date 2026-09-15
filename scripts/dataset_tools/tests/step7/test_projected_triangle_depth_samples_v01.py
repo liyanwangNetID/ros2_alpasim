@@ -4,10 +4,10 @@ import math
 
 import pytest
 
-from projected_triangle_depth_samples_v01 import (
+from step7.projected_triangle_depth_samples_v01 import (
     sample_projected_triangle_depths,
 )
-from projected_triangle_raster_cells_v01 import PixelPoint, RasterCell
+from step7.projected_triangle_raster_cells_v01 import PixelPoint, RasterCell
 
 
 def sample(points, depths=(2.0, 4.0, 8.0), *, image=(8, 8), raster=(8, 8)):

@@ -4,15 +4,15 @@ import math
 
 import pytest
 
-from actor_depth_zbuffer_v01 import (
+from step7.actor_depth_zbuffer_v01 import (
     ActorDepthRasterInput,
     resolve_actor_depth_zbuffer,
 )
-from actor_surface_depth_raster_v01 import (
+from step7.actor_surface_depth_raster_v01 import (
     ActorSurfaceCellDepth,
     ActorSurfaceDepthRaster,
 )
-from projected_triangle_raster_cells_v01 import RasterCell
+from step7.projected_triangle_raster_cells_v01 import RasterCell
 
 
 def surface(column, row, depth):

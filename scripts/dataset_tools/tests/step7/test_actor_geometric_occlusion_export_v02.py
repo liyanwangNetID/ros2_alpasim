@@ -3,18 +3,18 @@ from dataclasses import replace
 
 import pytest
 
-from actor_geometric_occlusion_evidence_v01 import (
+from step7.actor_geometric_occlusion_evidence_v01 import (
     ActorGeometricOcclusionEvidence,
 )
-from actor_geometric_occlusion_export_v02 import (
+from step7.actor_geometric_occlusion_export_v02 import (
     SCHEMA_VERSION,
     actor_geometric_occlusion_projection_context_export_record,
     encode_actor_geometric_occlusion_projection_context_export_record,
 )
-from actor_geometric_occlusion_projection_context_v01 import (
+from step7.actor_geometric_occlusion_projection_context_v01 import (
     ActorGeometricOcclusionProjectionContext,
 )
-from candidate_without_sampled_surface_projection_evidence_v01 import (
+from step7.candidate_without_sampled_surface_projection_evidence_v01 import (
     CandidateWithoutSampledSurfaceProjectionEvidence,
 )
 

@@ -4,7 +4,7 @@ import math
 
 import pytest
 
-from actor_observability_rules_v01 import (
+from step7.actor_observability_rules_v01 import (
     FAILURE_BELOW_MINIMUM_INSIDE_IMAGE_HULL_RATIO,
     FAILURE_BELOW_MINIMUM_PROJECTED_HEIGHT,
     FAILURE_BELOW_PRIMARY_AREA_AND_HEIGHT,

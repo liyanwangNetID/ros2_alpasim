@@ -4,8 +4,8 @@ import math
 
 import pytest
 
-from camera_projection_v01 import Vector3
-from triangle_angular_fov_subdivision_v01 import (
+from step7.camera_projection_v01 import Vector3
+from step7.triangle_angular_fov_subdivision_v01 import (
     subdivide_triangle_to_angular_fov,
 )
 

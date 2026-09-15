@@ -4,7 +4,7 @@ import math
 
 import pytest
 
-from triangle_perspective_depth_v01 import (
+from step7.triangle_perspective_depth_v01 import (
     interpolate_perspective_camera_depth,
 )
 

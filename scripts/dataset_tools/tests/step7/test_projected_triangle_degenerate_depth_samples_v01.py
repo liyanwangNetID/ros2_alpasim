@@ -1,10 +1,10 @@
 import pytest
 
-from projected_triangle_depth_samples_v01 import (
+from step7.projected_triangle_depth_samples_v01 import (
     sample_projected_triangle_depths,
 )
-from projected_triangle_raster_cells_v01 import PixelPoint
-from triangle_barycentric_coordinates_v01 import Point2D, triangle_is_degenerate
+from step7.projected_triangle_raster_cells_v01 import PixelPoint
+from step7.triangle_barycentric_coordinates_v01 import Point2D, triangle_is_degenerate
 
 
 def sample(points):

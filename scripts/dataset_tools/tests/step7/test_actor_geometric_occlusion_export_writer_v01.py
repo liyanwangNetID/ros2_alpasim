@@ -3,14 +3,14 @@ from dataclasses import replace
 
 import pytest
 
-from actor_geometric_occlusion_evidence_v01 import (
+from step7.actor_geometric_occlusion_evidence_v01 import (
     ActorGeometricOcclusionEvidence,
 )
-from actor_geometric_occlusion_export_writer_v01 import (
+from step7.actor_geometric_occlusion_export_writer_v01 import (
     ActorGeometricOcclusionExportInput,
     write_actor_geometric_occlusion_evidence,
 )
-from actor_geometric_occlusion_export_v01 import SCHEMA_VERSION
+from step7.actor_geometric_occlusion_export_v01 import SCHEMA_VERSION
 
 
 def evidence(track_id, actor_class="automobile", status="combined_evidence_available"):

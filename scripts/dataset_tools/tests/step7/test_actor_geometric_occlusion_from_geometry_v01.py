@@ -2,8 +2,8 @@ from types import SimpleNamespace
 
 import pytest
 
-import actor_geometric_occlusion_from_geometry_v01 as target
-from scene_fact_schema_v01 import CAMERA_NAMES
+from step7 import actor_geometric_occlusion_from_geometry_v01 as target
+from step7.scene_fact_schema_v01 import CAMERA_NAMES
 
 
 def cameras():

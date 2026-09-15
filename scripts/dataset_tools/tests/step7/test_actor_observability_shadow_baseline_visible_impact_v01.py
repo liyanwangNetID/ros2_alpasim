@@ -1,9 +1,9 @@
 import pytest
 
-from actor_observability_shadow_baseline_visible_impact_v01 import (
+from step7.actor_observability_shadow_baseline_visible_impact_v01 import (
     summarize_shadow_baseline_visible_class_impact,
 )
-from actor_observability_shadow_policy_v01 import ObservabilityShadowPolicy
+from step7.actor_observability_shadow_policy_v01 import ObservabilityShadowPolicy
 
 
 def policy(name, winning, fraction):

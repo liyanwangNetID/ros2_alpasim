@@ -2,13 +2,13 @@ from dataclasses import replace
 
 import pytest
 
-from actor_occlusion_evidence_v01 import (
+from step7.actor_occlusion_evidence_v01 import (
     build_camera_actor_occlusion_evidence,
 )
-from actor_occlusion_resolution_comparison_v01 import (
+from step7.actor_occlusion_resolution_comparison_v01 import (
     compare_actor_occlusion_resolutions,
 )
-from occlusion_resolution_comparison_summary_v01 import (
+from step7.occlusion_resolution_comparison_summary_v01 import (
     summarize_occlusion_resolution_comparisons,
 )
 

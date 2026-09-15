@@ -1,12 +1,12 @@
 import pytest
 
-from actor_multicamera_occlusion_summary_v01 import (
+from step7.actor_multicamera_occlusion_summary_v01 import (
     summarize_actor_multicamera_occlusion,
 )
-from actor_occlusion_evidence_v01 import (
+from step7.actor_occlusion_evidence_v01 import (
     build_camera_actor_occlusion_evidence,
 )
-from scene_fact_schema_v01 import CAMERA_NAMES
+from step7.scene_fact_schema_v01 import CAMERA_NAMES
 
 
 def evidence(

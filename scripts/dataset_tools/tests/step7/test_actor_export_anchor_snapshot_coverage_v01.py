@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 
-from actor_export_anchor_snapshot_coverage_v01 import (
+from step7.actor_export_anchor_snapshot_coverage_v01 import (
     summarize_actor_export_anchor_snapshot_coverage,
 )
 

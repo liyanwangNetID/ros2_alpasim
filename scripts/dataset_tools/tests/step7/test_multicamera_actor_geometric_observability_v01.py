@@ -2,9 +2,9 @@ from types import SimpleNamespace
 
 import pytest
 
-import multicamera_actor_geometric_observability_v01 as target
-from actor_box_image_projection_v01 import ActorCameraProjection
-from scene_fact_schema_v01 import CAMERA_NAMES
+from step7 import multicamera_actor_geometric_observability_v01 as target
+from step7.actor_box_image_projection_v01 import ActorCameraProjection
+from step7.scene_fact_schema_v01 import CAMERA_NAMES
 
 
 def actor(track_id, actor_class="automobile"):

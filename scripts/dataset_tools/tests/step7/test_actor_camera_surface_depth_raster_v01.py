@@ -4,11 +4,11 @@ from dataclasses import dataclass
 
 import pytest
 
-from actor_camera_surface_depth_raster_v01 import (
+from step7.actor_camera_surface_depth_raster_v01 import (
     build_actor_camera_surface_depth_raster,
 )
-from camera_projection_v01 import Vector3
-from projected_triangle_raster_cells_v01 import RasterCell
+from step7.camera_projection_v01 import Vector3
+from step7.projected_triangle_raster_cells_v01 import RasterCell
 
 
 @dataclass(frozen=True)

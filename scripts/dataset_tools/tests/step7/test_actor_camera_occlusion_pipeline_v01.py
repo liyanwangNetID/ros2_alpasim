@@ -2,10 +2,10 @@ from dataclasses import dataclass
 
 import pytest
 
-from actor_camera_occlusion_pipeline_v01 import (
+from step7.actor_camera_occlusion_pipeline_v01 import (
     build_camera_actor_occlusion_pipeline,
 )
-from actor_depth_zbuffer_v01 import ActorDepthRasterInput
+from step7.actor_depth_zbuffer_v01 import ActorDepthRasterInput
 
 
 @dataclass(frozen=True)

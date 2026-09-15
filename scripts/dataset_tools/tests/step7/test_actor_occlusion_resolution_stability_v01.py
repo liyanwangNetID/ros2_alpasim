@@ -1,12 +1,12 @@
 from dataclasses import replace
 
-from actor_occlusion_evidence_v01 import (
+from step7.actor_occlusion_evidence_v01 import (
     build_camera_actor_occlusion_evidence,
 )
-from actor_occlusion_resolution_comparison_v01 import (
+from step7.actor_occlusion_resolution_comparison_v01 import (
     compare_actor_occlusion_resolutions,
 )
-from actor_occlusion_resolution_stability_v01 import (
+from step7.actor_occlusion_resolution_stability_v01 import (
     build_actor_occlusion_resolution_stability_evidence,
 )
 

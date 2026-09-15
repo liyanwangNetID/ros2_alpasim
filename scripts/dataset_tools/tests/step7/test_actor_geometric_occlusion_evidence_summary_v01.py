@@ -2,10 +2,10 @@ from dataclasses import replace
 
 import pytest
 
-from actor_geometric_occlusion_evidence_summary_v01 import (
+from step7.actor_geometric_occlusion_evidence_summary_v01 import (
     summarize_actor_geometric_occlusion_evidence,
 )
-from actor_geometric_occlusion_evidence_v01 import (
+from step7.actor_geometric_occlusion_evidence_v01 import (
     ActorGeometricOcclusionEvidence,
 )
 

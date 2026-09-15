@@ -4,8 +4,8 @@ import math
 
 import pytest
 
-from camera_projection_v01 import Vector3
-from triangle_cone_intersection_v01 import (
+from step7.camera_projection_v01 import Vector3
+from step7.triangle_cone_intersection_v01 import (
     triangle_intersects_angular_fov_cone,
 )
 

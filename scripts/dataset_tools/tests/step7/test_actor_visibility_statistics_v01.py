@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from actor_depth_zbuffer_v01 import ActorZBufferSummary
-from actor_visibility_statistics_v01 import (
+from step7.actor_depth_zbuffer_v01 import ActorZBufferSummary
+from step7.actor_visibility_statistics_v01 import (
     calculate_actor_visibility_statistics,
 )
 

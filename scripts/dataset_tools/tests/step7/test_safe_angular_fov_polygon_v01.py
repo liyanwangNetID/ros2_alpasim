@@ -4,9 +4,9 @@ import math
 
 import pytest
 
-from camera_projection_v01 import Vector3
-from safe_angular_fov_polygon_v01 import build_safe_angular_fov_polygon
-from triangle_angular_fov_diagnostics_v01 import point_is_within_angular_fov
+from step7.camera_projection_v01 import Vector3
+from step7.safe_angular_fov_polygon_v01 import build_safe_angular_fov_polygon
+from step7.triangle_angular_fov_diagnostics_v01 import point_is_within_angular_fov
 
 
 def test_fully_inside_triangle_is_preserved_as_one_triangle():

@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from actor_geometric_occlusion_export_inputs_v02 import (
+from step7.actor_geometric_occlusion_export_inputs_v02 import (
     prepare_actor_geometric_occlusion_projection_context_export_inputs,
 )
 

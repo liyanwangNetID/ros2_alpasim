@@ -1,9 +1,10 @@
+import hashlib
 import json
 from types import SimpleNamespace
 
 import pytest
 
-import actor_geometric_occlusion_export_writer_v02 as target
+from step7 import actor_geometric_occlusion_export_writer_v02 as target
 
 
 def context(track_id, *, status="combined_evidence_available", count=0):
@@ -82,6 +83,14 @@ def test_writes_sorted_v02_rows_and_context_summary(monkeypatch, tmp_path):
     assert summary[
         "missing_surface_projection_context_status_counts"
     ] == {"missing_surface_with_truncated_projection": 1}
+    expected_digest = hashlib.sha256(
+        output.read_bytes()
+    ).hexdigest()
+
+    assert summary["output_sha256"] == expected_digest
+    assert json.loads(
+        summary_path.read_text()
+    )["output_sha256"] == expected_digest
     assert json.loads(summary_path.read_text())["schema_version"] == (
         target.SCHEMA_VERSION
     )
@@ -118,6 +127,9 @@ def test_empty_export_is_supported(monkeypatch, tmp_path):
     assert output.read_text() == ""
     assert summary["row_count"] == 0
     assert summary["missing_surface_projection_context_count"] == 0
+    assert summary["output_sha256"] == hashlib.sha256(
+        b""
+    ).hexdigest()
 
 
 def test_encoder_failure_leaves_no_outputs(monkeypatch, tmp_path):

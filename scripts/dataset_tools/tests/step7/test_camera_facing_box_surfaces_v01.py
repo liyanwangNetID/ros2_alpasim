@@ -4,10 +4,10 @@ import math
 
 import pytest
 
-from box_surface_geometry_v01 import triangulate_box_surfaces
-from camera_facing_box_surfaces_v01 import prepare_camera_facing_box_triangles
-from camera_projection_v01 import Vector3
-from triangle_facing_v01 import is_triangle_front_facing
+from step7.box_surface_geometry_v01 import triangulate_box_surfaces
+from step7.camera_facing_box_surfaces_v01 import prepare_camera_facing_box_triangles
+from step7.camera_projection_v01 import Vector3
+from step7.triangle_facing_v01 import is_triangle_front_facing
 
 
 def translated_box(center: Vector3, half_extent: float = 1.0):

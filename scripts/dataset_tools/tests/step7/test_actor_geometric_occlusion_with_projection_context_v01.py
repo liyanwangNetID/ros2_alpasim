@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 import pytest
 
-import actor_geometric_occlusion_with_projection_context_v01 as target
+from step7 import actor_geometric_occlusion_with_projection_context_v01 as target
 
 
 def install_stubs(monkeypatch, *, pipeline_count=2, context_count=2):

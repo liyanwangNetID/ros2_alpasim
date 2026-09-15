@@ -1,6 +1,6 @@
 import pytest
 
-from actor_observability_shadow_policy_v01 import (
+from step7.actor_observability_shadow_policy_v01 import (
     ObservabilityShadowPolicy,
     evaluate_actor_observability_shadow,
     evaluate_actor_observability_shadow_policies,

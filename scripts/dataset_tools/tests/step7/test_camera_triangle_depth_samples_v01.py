@@ -5,9 +5,9 @@ from dataclasses import dataclass
 
 import pytest
 
-from camera_projection_v01 import Vector3
-from camera_triangle_depth_samples_v01 import sample_camera_triangle_depths
-from projected_triangle_raster_cells_v01 import RasterCell
+from step7.camera_projection_v01 import Vector3
+from step7.camera_triangle_depth_samples_v01 import sample_camera_triangle_depths
+from step7.projected_triangle_raster_cells_v01 import RasterCell
 
 
 @dataclass(frozen=True)

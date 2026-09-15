@@ -1,9 +1,9 @@
 import pytest
 
-from actor_observability_shadow_failure_attribution_v01 import (
+from step7.actor_observability_shadow_failure_attribution_v01 import (
     summarize_shadow_failure_attribution,
 )
-from actor_observability_shadow_policy_v01 import ObservabilityShadowPolicy
+from step7.actor_observability_shadow_policy_v01 import ObservabilityShadowPolicy
 
 
 def policy(name, winning, fraction):

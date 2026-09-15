@@ -5,8 +5,8 @@ from dataclasses import dataclass
 
 import pytest
 
-from camera_projection_v01 import Vector3
-from ftheta_triangle_vertex_projection_v01 import project_ftheta_triangle_vertices
+from step7.camera_projection_v01 import Vector3
+from step7.ftheta_triangle_vertex_projection_v01 import project_ftheta_triangle_vertices
 
 
 @dataclass(frozen=True)

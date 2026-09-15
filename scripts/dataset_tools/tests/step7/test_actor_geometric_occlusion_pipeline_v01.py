@@ -2,14 +2,14 @@ from types import SimpleNamespace
 
 import pytest
 
-from actor_geometric_occlusion_pipeline_v01 import (
+from step7.actor_geometric_occlusion_pipeline_v01 import (
     build_actor_geometric_occlusion_pipeline,
 )
-from actor_multicamera_occlusion_summary_v01 import (
+from step7.actor_multicamera_occlusion_summary_v01 import (
     ActorMulticameraOcclusionSummary,
 )
-from actor_observability_v01 import ActorObservability, CameraObservability
-from scene_fact_schema_v01 import CAMERA_NAMES, OBSERVABILITY_FORMAT_VERSION
+from step7.actor_observability_v01 import ActorObservability, CameraObservability
+from step7.scene_fact_schema_v01 import CAMERA_NAMES, OBSERVABILITY_FORMAT_VERSION
 
 
 def geometric(track_id):

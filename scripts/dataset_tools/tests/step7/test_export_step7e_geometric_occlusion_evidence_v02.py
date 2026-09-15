@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 
-import export_step7e_geometric_occlusion_evidence_v02 as target
+from step7 import export_step7e_geometric_occlusion_evidence_v02 as target
 
 
 def test_build_anchor_uses_enhanced_pipeline_and_prepares_inputs(monkeypatch):
@@ -78,6 +78,7 @@ def test_export_reuses_reader_per_clip_and_calls_v02_writer(monkeypatch, tmp_pat
             "rows_by_actor_class": {},
             "missing_surface_projection_context_count": 0,
             "missing_surface_projection_context_status_counts": {},
+            "output_sha256": "test_digest",
         }
 
     monkeypatch.setattr(target, "DrivingClipReader", reader)
@@ -123,6 +124,7 @@ def test_export_returns_writer_summary(monkeypatch, tmp_path):
         "rows_by_actor_class": {},
         "missing_surface_projection_context_count": 0,
         "missing_surface_projection_context_status_counts": {},
+            "output_sha256": "test_digest",
     }
     monkeypatch.setattr(
         target,

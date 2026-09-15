@@ -3,7 +3,7 @@ from types import SimpleNamespace
 
 import pytest
 
-import actor_camera_occlusion_from_geometry_v01 as target
+from step7 import actor_camera_occlusion_from_geometry_v01 as target
 
 
 @dataclass(frozen=True)

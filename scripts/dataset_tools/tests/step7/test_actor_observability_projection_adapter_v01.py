@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from actor_box_image_projection_v01 import ActorCameraProjection
-from actor_observability_rules_v01 import (
+from step7.actor_box_image_projection_v01 import ActorCameraProjection
+from step7.actor_observability_rules_v01 import (
     FAILURE_BELOW_MINIMUM_INSIDE_IMAGE_HULL_RATIO,
     FAILURE_BELOW_MINIMUM_PROJECTED_HEIGHT,
     evaluate_geometric_observability,

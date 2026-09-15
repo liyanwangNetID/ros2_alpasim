@@ -2,13 +2,13 @@ from dataclasses import dataclass
 
 import pytest
 
-from actor_depth_zbuffer_v01 import (
+from step7.actor_depth_zbuffer_v01 import (
     ActorDepthRasterInput,
     ActorDepthZBuffer,
     ActorZBufferSummary,
     ZBufferCellWinner,
 )
-from actor_occlusion_evidence_adapter_v01 import (
+from step7.actor_occlusion_evidence_adapter_v01 import (
     build_camera_occlusion_evidence_from_zbuffer,
 )
 

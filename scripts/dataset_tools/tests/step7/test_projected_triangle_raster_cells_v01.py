@@ -4,7 +4,7 @@ import math
 
 import pytest
 
-from projected_triangle_raster_cells_v01 import (
+from step7.projected_triangle_raster_cells_v01 import (
     PixelPoint,
     RasterCell,
     rasterize_projected_triangle_cells,

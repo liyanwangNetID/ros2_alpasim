@@ -3,7 +3,7 @@ from types import SimpleNamespace
 
 import pytest
 
-import export_step7e_geometric_occlusion_evidence_v01 as target
+from step7 import export_step7e_geometric_occlusion_evidence_v01 as target
 
 
 def test_read_keyframes_validates_and_sorts(tmp_path):

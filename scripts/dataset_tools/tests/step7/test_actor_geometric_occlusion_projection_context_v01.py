@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 import pytest
 
-import actor_geometric_occlusion_projection_context_v01 as target
+from step7 import actor_geometric_occlusion_projection_context_v01 as target
 
 
 def geometric(*track_ids):

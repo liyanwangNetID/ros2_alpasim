@@ -4,12 +4,12 @@ import math
 
 import pytest
 
-from actor_surface_depth_raster_v01 import merge_actor_surface_depth_samples
-from projected_triangle_depth_samples_v01 import (
+from step7.actor_surface_depth_raster_v01 import merge_actor_surface_depth_samples
+from step7.projected_triangle_depth_samples_v01 import (
     ProjectedTriangleDepthSamples,
     RasterDepthSample,
 )
-from projected_triangle_raster_cells_v01 import RasterCell
+from step7.projected_triangle_raster_cells_v01 import RasterCell
 
 
 def depth_sample(column, row, depth, *, u=None, v=None):

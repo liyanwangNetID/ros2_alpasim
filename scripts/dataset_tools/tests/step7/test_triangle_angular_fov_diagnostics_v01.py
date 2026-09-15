@@ -4,8 +4,8 @@ import math
 
 import pytest
 
-from camera_projection_v01 import Vector3
-from triangle_angular_fov_diagnostics_v01 import (
+from step7.camera_projection_v01 import Vector3
+from step7.triangle_angular_fov_diagnostics_v01 import (
     FOV_EDGE_INDEX_PAIRS,
     classify_triangle_angular_fov,
     point_is_within_angular_fov,

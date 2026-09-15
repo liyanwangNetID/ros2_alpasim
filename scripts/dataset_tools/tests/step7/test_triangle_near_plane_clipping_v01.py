@@ -4,9 +4,9 @@ import math
 
 import pytest
 
-from actor_box_image_projection_v01 import clip_segment_to_positive_z
-from camera_projection_v01 import Vector3
-from triangle_near_plane_clipping_v01 import (
+from step7.actor_box_image_projection_v01 import clip_segment_to_positive_z
+from step7.camera_projection_v01 import Vector3
+from step7.triangle_near_plane_clipping_v01 import (
     clip_polygon_to_positive_z,
     clip_triangle_to_positive_z,
 )

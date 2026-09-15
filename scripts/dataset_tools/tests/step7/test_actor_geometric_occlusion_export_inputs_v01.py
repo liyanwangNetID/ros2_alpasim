@@ -2,10 +2,10 @@ from types import SimpleNamespace
 
 import pytest
 
-from actor_geometric_occlusion_evidence_v01 import (
+from step7.actor_geometric_occlusion_evidence_v01 import (
     ActorGeometricOcclusionEvidence,
 )
-from actor_geometric_occlusion_export_inputs_v01 import (
+from step7.actor_geometric_occlusion_export_inputs_v01 import (
     prepare_actor_geometric_occlusion_export_inputs,
 )
 

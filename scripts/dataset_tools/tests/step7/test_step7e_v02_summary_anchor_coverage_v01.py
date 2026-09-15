@@ -2,14 +2,14 @@ from dataclasses import replace
 
 import pytest
 
-from actor_export_anchor_coverage_summary_v01 import (
+from step7.actor_export_anchor_coverage_summary_v01 import (
     ActorExportAnchorCoverageSummary,
 )
-from actor_export_anchor_snapshot_coverage_v01 import (
+from step7.actor_export_anchor_snapshot_coverage_v01 import (
     ActorExportAnchorSnapshotCoverageSummary,
     RowlessAnchorSnapshotEvidence,
 )
-from step7e_v02_summary_anchor_coverage_v01 import (
+from step7.step7e_v02_summary_anchor_coverage_v01 import (
     attach_anchor_snapshot_coverage_to_summary,
 )
 

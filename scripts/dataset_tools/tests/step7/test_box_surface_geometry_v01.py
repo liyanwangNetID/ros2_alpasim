@@ -2,14 +2,14 @@ from __future__ import annotations
 
 import pytest
 
-from actor_box_image_projection_v01 import BOX_EDGE_INDEX_PAIRS
-from actor_box_projection_v01 import local_box_corners
-from box_surface_geometry_v01 import (
+from step7.actor_box_image_projection_v01 import BOX_EDGE_INDEX_PAIRS
+from step7.actor_box_projection_v01 import local_box_corners
+from step7.box_surface_geometry_v01 import (
     BOX_FACE_INDEX_QUADS,
     BOX_TRIANGLE_INDEX_TRIPLES,
     triangulate_box_surfaces,
 )
-from camera_projection_v01 import Vector3
+from step7.camera_projection_v01 import Vector3
 
 
 def subtract(first: Vector3, second: Vector3) -> Vector3:
