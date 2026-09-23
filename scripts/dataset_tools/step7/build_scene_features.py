@@ -116,7 +116,7 @@ def main():
     print("keyframes:", report["keyframe_count"])
     print("road contexts:", report["road_context_type_counts"])
     print("quality statuses:", report["quality_status_counts"])
-    print("role presence:", report["role_presence_status_counts"])
+    print("selected actors:", report["selected_actor_counts"])
     print("sha256:", report["output_sha256"])
     print("elapsed:", duration_text(report["elapsed_seconds"]))
     print("output:", OUTPUT)

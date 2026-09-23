@@ -27,8 +27,6 @@ RELATIVE_DISTANCE_CATEGORIES = frozenset({'near', 'medium', 'far', 'unknown'})
 DISTANCE_TREND_CATEGORIES = frozenset({'approaching', 'receding', 'stable_distance', 'uncertain'})
 RELATIVE_SPEED_CATEGORIES = frozenset({'slower_than_ego', 'similar_to_ego', 'faster_than_ego', 'stationary', 'uncertain'})
 QUALITY_STATUSES = frozenset({'usable', 'unknown'})
-ACTOR_ROLE_KEYS = ('lead_vehicle', 'left_nearby_vehicle', 'right_nearby_vehicle')
-FINAL_RECORD_REQUIRED_KEYS = frozenset({'scene_fact_format_version', 'generator_version', 'rule_version', 'anchor_id', 'clip_id', 'anchor_ns', 'road_context', 'lead_vehicle', 'left_nearby_vehicle', 'right_nearby_vehicle', 'quality'})
 FORBIDDEN_FUTURE_INPUTS = ('actors/future.jsonl', 'ego/ground_truth_future.jsonl', 'ego/complete_recording_ground_truth.json', 'ego/planner_output.jsonl')
 ALLOWED_CURRENT_OR_PAST_INPUTS = ('keyframes.jsonl', 'ego/ego_state.jsonl', 'actors/current.jsonl', 'calibration/*.json', 'cameras/*/timestamps.jsonl', 'map/vector_map.json')
 _REGION_NAMES = {'ahead': 'front', 'ahead_left': 'front_left', 'ahead_right': 'front_right', 'left': 'left', 'right': 'right', 'behind_left': 'rear_left', 'behind': 'rear', 'behind_right': 'rear_right', 'overlap': 'overlapping'}
@@ -217,126 +215,145 @@ def relative_speed_category(*, actor_speed_mps: float, ego_speed_mps: float) -> 
         raise RuntimeError('unexpected relative-speed category')
     return value
 
-def assemble_selected_actor_feature(*, role: str, selected_role: Mapping[str, Any] | None, empty_reason: str | None, current_geometry: Mapping[str, Any] | None) -> dict[str, Any]:
-    if selected_role is None:
-        if empty_reason is None:
-            raise ValueError('empty Actor role requires an explicit reason')
-        return {'presence_status': 'not_present', 'role': role, 'absence_reason': empty_reason}
+def assemble_selected_actor_feature(*, role, selected_role, current_geometry):
     if current_geometry is None:
-        raise ValueError('selected Actor requires current geometry')
-    if str(current_geometry['track_id']) != str(selected_role['track_id']):
-        raise ValueError('selected Actor and current geometry identities differ')
-    history_status = str(selected_role['history_status'])
-    return {'presence_status': 'present', 'role': role, 'track_id': str(selected_role['track_id']), 'label_class': str(selected_role['label_class']), 'relative_position': str(selected_role['geometric_region']), 'relative_distance': relative_distance_category(float(selected_role['planar_distance_m'])), 'distance_m': float(selected_role['planar_distance_m']), 'relative_x_m': float(selected_role['relative_x_m']), 'relative_y_m': float(selected_role['relative_y_m']), 'distance_trend': distance_trend(history_status, selected_role['mean_distance_rate_mps']), 'relative_speed': relative_speed_category(actor_speed_mps=float(current_geometry['actor_speed_mps']), ego_speed_mps=float(current_geometry['ego_speed_mps'])), 'actor_speed_mps': float(current_geometry['actor_speed_mps']), 'ego_speed_mps': float(current_geometry['ego_speed_mps']), 'observability_status': 'candidate_visible', 'visibility_policy_status': str(selected_role['visibility_policy_status']), 'history_status': history_status, 'lane_match_status': str(selected_role['lane_match_status']), 'ego_lane_relation': str(selected_role['ego_lane_relation'])}
+        raise ValueError("selected Actor requires current geometry")
+    if str(current_geometry["track_id"]) != str(selected_role["track_id"]):
+        raise ValueError("selected Actor and current geometry identities differ")
+    history_status = str(selected_role["history_status"])
+    return {
+        "role": role, "role_rank": int(selected_role["role_rank"]),
+        "track_id": str(selected_role["track_id"]), "label_class": str(selected_role["label_class"]),
+        "relative_position": str(selected_role["geometric_region"]),
+        "relative_distance": relative_distance_category(float(selected_role["planar_distance_m"])),
+        "distance_m": float(selected_role["planar_distance_m"]),
+        "relative_x_m": float(selected_role["relative_x_m"]), "relative_y_m": float(selected_role["relative_y_m"]),
+        "distance_trend": distance_trend(history_status, selected_role["mean_distance_rate_mps"]),
+        "relative_speed": relative_speed_category(actor_speed_mps=float(current_geometry["actor_speed_mps"]), ego_speed_mps=float(current_geometry["ego_speed_mps"])),
+        "actor_speed_mps": float(current_geometry["actor_speed_mps"]), "ego_speed_mps": float(current_geometry["ego_speed_mps"]),
+        "observability_status": "candidate_visible", "visibility_policy_status": str(selected_role["visibility_policy_status"]),
+        "history_status": history_status, "lane_match_status": str(selected_role["lane_match_status"]),
+        "ego_lane_relation": str(selected_role["ego_lane_relation"]),
+    }
 
-def assemble_feature_quality(*, road_context: Mapping[str, Any], actor_roles: Mapping[str, Mapping[str, Any]]) -> dict[str, Any]:
+
+def _unique_reasons(values):
+    return list(dict.fromkeys(str(value) for value in values))
+
+
+def _line_proximities(road):
+    return ("none", "none") if road.get("nearest_wait_line_distance_m") is None else ("unknown", "unknown")
+
+
+def final_road_context(feature):
+    road = feature["road_context"]
+    context_type = str(road["type"])
+    stop, yield_ = _line_proximities(road)
+    reasons = list(road.get("evidence", ()))
+    quality = "unknown" if context_type == "unknown" else "usable"
+    if context_type == "unknown":
+        reasons.append("ego_road_context_unknown")
+    if road.get("nearest_wait_line_distance_m") is not None:
+        reasons.append("wait_line_type_not_propagated_to_feature_layer")
+    return {"type": context_type, "intersection_proximity": str(road["proximity_status"]), "stop_line_proximity": stop, "yield_line_proximity": yield_, "quality_status": quality, "reasons": _unique_reasons(reasons)}
+
+
+ACTOR_LIST_KEYS = ("lead_actors", "left_nearby_actors", "right_nearby_actors")
+FINAL_RECORD_REQUIRED_KEYS = frozenset({"scene_fact_format_version", "generator_version", "rule_version", "anchor_id", "clip_id", "anchor_ns", "road_context", "actor_context", "quality"})
+
+
+def assemble_scene_fact_feature_row(*, keyframe, ego_road, role_selection, current_geometry_by_track_id):
+    anchor = str(keyframe["anchor_id"])
+    if str(ego_road["anchor_id"]) != anchor or str(role_selection["anchor_id"]) != anchor:
+        raise ValueError("Anchor input does not match Keyframe")
+    names = {"lead_actors": "lead_actor", "left_nearby_actors": "left_nearby_actor", "right_nearby_actors": "right_nearby_actor"}
+    lists = {}
+    for key in ACTOR_LIST_KEYS:
+        lists[key] = []
+        for selected in role_selection["roles"][key]:
+            track = str(selected["track_id"])
+            lists[key].append(assemble_selected_actor_feature(role=names[key], selected_role=selected, current_geometry=current_geometry_by_track_id.get(track)))
+    road = classify_road_context(ego_road)
     reasons = []
-    if road_context['type'] == 'unknown':
-        reasons.append('ego_road_context_unknown')
-    for role in ACTOR_ROLE_KEYS:
-        value = actor_roles[role]
-        if value['presence_status'] != 'present':
-            continue
-        if value['history_status'] != 'usable':
-            reasons.append(f"{role}_history_{value['history_status']}")
-        if value['lane_match_status'] != 'matched':
-            reasons.append(f'{role}_lane_unmatched')
-    status = 'usable' if not reasons else 'unknown'
-    if status not in QUALITY_STATUSES:
-        raise RuntimeError('unexpected quality status')
-    return {'status': status, 'reasons': reasons, 'static_occlusion_evaluated': False, 'current_and_past_inputs_only': True}
+    if road["type"] == "unknown":
+        reasons.append("ego_road_context_unknown")
+    for key in ACTOR_LIST_KEYS:
+        for actor in lists[key]:
+            if actor["history_status"] != "usable":
+                reasons.append(f"{key}_history_{actor['history_status']}")
+            if actor["lane_match_status"] != "matched":
+                reasons.append(f"{key}_lane_unmatched")
+    return {
+        "schema_version": "step7k-scene-fact-features-v02", "feature_format_version": FEATURE_FORMAT_VERSION,
+        "anchor_id": anchor, "clip_id": str(keyframe["clip_id"]), "anchor_ns": int(keyframe["anchor_ns"]),
+        "road_context": road, "actor_context": {**role_selection["roles"]["selection_context"], **lists},
+        "quality": {"status": "usable" if not reasons else "unknown", "reasons": _unique_reasons(reasons), "static_occlusion_evaluated": False, "current_and_past_inputs_only": True},
+        "future_actor_data_used": False, "future_ego_data_used": False, "planner_output_used": False, "meta_action_used": False,
+    }
 
-def assemble_scene_fact_feature_row(*, keyframe: Mapping[str, Any], ego_road: Mapping[str, Any], role_selection: Mapping[str, Any], current_geometry_by_track_id: Mapping[str, Mapping[str, Any]]) -> dict[str, Any]:
-    anchor_id = str(keyframe['anchor_id'])
-    for name, row in (('ego_road', ego_road), ('role_selection', role_selection)):
-        if str(row['anchor_id']) != anchor_id:
-            raise ValueError(f'{name} Anchor does not match Keyframe')
-    role_features = {}
-    for role in ACTOR_ROLE_KEYS:
-        selected = role_selection['roles'][role]
-        geometry = None if selected is None else current_geometry_by_track_id.get(str(selected['track_id']))
-        role_features[role] = assemble_selected_actor_feature(role=role, selected_role=selected, empty_reason=role_selection['empty_role_reasons'][role], current_geometry=geometry)
-    road_context = classify_road_context(ego_road)
-    quality = assemble_feature_quality(road_context=road_context, actor_roles=role_features)
-    return {'schema_version': 'step7k-scene-fact-features-v01', 'feature_format_version': FEATURE_FORMAT_VERSION, 'anchor_id': anchor_id, 'clip_id': str(keyframe['clip_id']), 'anchor_ns': int(keyframe['anchor_ns']), 'road_context': road_context, **role_features, 'quality': quality, 'future_actor_data_used': False, 'future_ego_data_used': False, 'planner_output_used': False, 'meta_action_used': False}
+
+def _final_actor(actor, cameras):
+    reasons = []
+    if actor["history_status"] != "usable":
+        reasons.append(f"history_{actor['history_status']}")
+    if actor["lane_match_status"] != "matched":
+        reasons.append("lane_unmatched")
+    visible = sorted(set(str(value) for value in cameras or ()))
+    if not visible:
+        raise ValueError("selected Actor requires at least one visible camera")
+    return {
+        "role_rank": int(actor["role_rank"]), "track_id": str(actor["track_id"]), "actor_class": str(actor["label_class"]),
+        "relative_position": str(actor["relative_position"]), "relative_distance": str(actor["relative_distance"]),
+        "relative_x_m": float(actor["relative_x_m"]), "relative_y_m": float(actor["relative_y_m"]), "distance_m": float(actor["distance_m"]),
+        "distance_trend": str(actor["distance_trend"]), "relative_speed_category": str(actor["relative_speed"]),
+        "actor_speed_mps": float(actor["actor_speed_mps"]), "ego_speed_mps": float(actor["ego_speed_mps"]),
+        "observability_status": str(actor["observability_status"]), "visible_in_cameras": visible,
+        "quality_status": "usable" if not reasons else "unknown", "reasons": reasons,
+    }
+
+
+def build_final_scene_fact_record(*, feature, visible_cameras_by_track_id):
+    context = feature["actor_context"]
+    lists = {key: [_final_actor(actor, visible_cameras_by_track_id.get(str(actor["track_id"]))) for actor in context[key]] for key in ACTOR_LIST_KEYS}
+    return {
+        "scene_fact_format_version": SCENE_FACT_FORMAT_VERSION, "generator_version": GENERATOR_VERSION, "rule_version": RULE_VERSION,
+        "anchor_id": str(feature["anchor_id"]), "clip_id": str(feature["clip_id"]), "anchor_ns": int(feature["anchor_ns"]),
+        "road_context": final_road_context(feature),
+        "actor_context": {"reference_ego_speed_mps": float(context["reference_ego_speed_mps"]), "forward_horizon_m": float(context["forward_horizon_m"]), "side_forward_horizon_m": float(context["side_forward_horizon_m"]), "rear_horizon_m": float(context["rear_horizon_m"]), "lists": context["lists"], **lists},
+        "quality": {"status": str(feature["quality"]["status"]), "static_occlusion_evaluated": False, "reasons": _unique_reasons(feature["quality"]["reasons"])},
+    }
+
+
+def _validate_rows(keyframes, rows, name):
+    anchors = [str(row["anchor_id"]) for row in keyframes]
+    if len(anchors) != len(set(anchors)) or {str(row["anchor_id"]) for row in rows} != set(anchors):
+        raise ValueError(f"{name} must contain exactly one row per Keyframe")
+    return anchors
+
 
 def summarize_scene_fact_feature_rows(*, keyframes, rows):
-    anchors = [str(row['anchor_id']) for row in keyframes]
-    row_anchors = [str(row['anchor_id']) for row in rows]
-    if len(anchors) != len(set(anchors)):
-        raise ValueError('Keyframe Anchor ids must be unique')
-    if len(rows) != len(anchors) or set(row_anchors) != set(anchors):
-        raise ValueError('feature rows must contain exactly one row per Keyframe')
-    role_presence = {role: dict(sorted(Counter((row[role]['presence_status'] for row in rows)).items())) for role in ACTOR_ROLE_KEYS}
-    return {'schema_version': 'step7k-scene-fact-features-summary-v01', 'keyframe_count': len(anchors), 'feature_row_count': len(rows), 'road_context_type_counts': dict(sorted(Counter((row['road_context']['type'] for row in rows)).items())), 'quality_status_counts': dict(sorted(Counter((row['quality']['status'] for row in rows)).items())), 'quality_reason_counts': dict(sorted(Counter((reason for row in rows for reason in row['quality']['reasons'])).items())), 'role_presence_status_counts': role_presence}
+    anchors = _validate_rows(keyframes, rows, "feature rows")
+    return {"schema_version": "step7k-scene-fact-features-summary-v02", "keyframe_count": len(anchors), "feature_row_count": len(rows), "road_context_type_counts": dict(sorted(Counter(row["road_context"]["type"] for row in rows).items())), "quality_status_counts": dict(sorted(Counter(row["quality"]["status"] for row in rows).items())), "quality_reason_counts": dict(sorted(Counter(reason for row in rows for reason in row["quality"]["reasons"]).items())), "selected_actor_counts": {key: sum(len(row["actor_context"][key]) for row in rows) for key in ACTOR_LIST_KEYS}}
 
-def _unique_reasons(values: Sequence[str]) -> list[str]:
-    return list(dict.fromkeys((str(value) for value in values)))
-
-def _line_proximities(road: Mapping[str, Any]) -> tuple[str, str]:
-    """Map available wait-line evidence conservatively to stop/yield fields."""
-    distance = road.get('nearest_wait_line_distance_m')
-    if distance is None:
-        return ('none', 'none')
-    proximity = str(road['proximity_status'])
-    return ('unknown', 'unknown')
-
-def final_road_context(feature: Mapping[str, Any]) -> dict[str, Any]:
-    road = feature['road_context']
-    context_type = str(road['type'])
-    stop_proximity, yield_proximity = _line_proximities(road)
-    reasons = list(road.get('evidence', ()))
-    if context_type == 'unknown':
-        reasons.append('ego_road_context_unknown')
-        quality = 'unknown'
-    else:
-        quality = 'usable'
-    if road.get('nearest_wait_line_distance_m') is not None:
-        reasons.append('wait_line_type_not_propagated_to_feature_layer')
-    return {'type': context_type, 'intersection_proximity': str(road['proximity_status']), 'stop_line_proximity': stop_proximity, 'yield_line_proximity': yield_proximity, 'quality_status': quality, 'reasons': _unique_reasons(reasons)}
-
-def final_actor_role(feature: Mapping[str, Any], *, visible_cameras: Sequence[str] | None) -> dict[str, Any]:
-    if feature['presence_status'] != 'present':
-        return {'presence_status': 'not_present', 'quality_status': 'usable', 'reasons': [str(feature['absence_reason'])]}
-    reasons = []
-    if feature['history_status'] != 'usable':
-        reasons.append(f"history_{feature['history_status']}")
-    if feature['lane_match_status'] != 'matched':
-        reasons.append('lane_unmatched')
-    cameras = sorted(set((str(value) for value in visible_cameras or ())))
-    if not cameras:
-        raise ValueError('present Actor role requires at least one visible camera')
-    quality = 'usable' if not reasons else 'unknown'
-    return {'presence_status': 'present', 'track_id': str(feature['track_id']), 'actor_class': str(feature['label_class']), 'relative_position': str(feature['relative_position']), 'relative_distance': str(feature['relative_distance']), 'distance_trend': str(feature['distance_trend']), 'relative_speed_category': str(feature['relative_speed']), 'observability_status': str(feature['observability_status']), 'visible_in_cameras': cameras, 'quality_status': quality, 'reasons': reasons}
-
-def build_final_scene_fact_record(*, feature: Mapping[str, Any], visible_cameras_by_track_id: Mapping[str, Sequence[str]]) -> dict[str, Any]:
-    roles = {}
-    for role in ACTOR_ROLE_KEYS:
-        value = feature[role]
-        track_id = None if value['presence_status'] != 'present' else str(value['track_id'])
-        roles[role] = final_actor_role(value, visible_cameras=None if track_id is None else visible_cameras_by_track_id.get(track_id))
-    return {'scene_fact_format_version': SCENE_FACT_FORMAT_VERSION, 'generator_version': GENERATOR_VERSION, 'rule_version': RULE_VERSION, 'anchor_id': str(feature['anchor_id']), 'clip_id': str(feature['clip_id']), 'anchor_ns': int(feature['anchor_ns']), 'road_context': final_road_context(feature), **roles, 'quality': {'status': str(feature['quality']['status']), 'static_occlusion_evaluated': False, 'reasons': _unique_reasons(feature['quality']['reasons'])}}
 
 def summarize_final_scene_facts(*, keyframes, rows):
-    anchors = [str(row['anchor_id']) for row in keyframes]
-    row_anchors = [str(row['anchor_id']) for row in rows]
-    if len(anchors) != len(set(anchors)):
-        raise ValueError('Keyframe Anchor ids must be unique')
-    if len(rows) != len(anchors) or set(row_anchors) != set(anchors):
-        raise ValueError('final Scene Facts must contain exactly one row per Keyframe')
-    return {'schema_version': 'step7l-final-scene-facts-summary-v01', 'keyframe_count': len(anchors), 'scene_fact_row_count': len(rows), 'road_context_type_counts': dict(sorted(Counter((row['road_context']['type'] for row in rows)).items())), 'quality_status_counts': dict(sorted(Counter((row['quality']['status'] for row in rows)).items())), 'role_presence_status_counts': {role: dict(sorted(Counter((row[role]['presence_status'] for row in rows)).items())) for role in ACTOR_ROLE_KEYS}, 'schema_validation_error_count': 0}
+    anchors = _validate_rows(keyframes, rows, "final Scene Facts")
+    return {"schema_version": "step7l-final-scene-facts-summary-v02", "keyframe_count": len(anchors), "scene_fact_row_count": len(rows), "road_context_type_counts": dict(sorted(Counter(row["road_context"]["type"] for row in rows).items())), "quality_status_counts": dict(sorted(Counter(row["quality"]["status"] for row in rows).items())), "selected_actor_counts": {key: sum(len(row["actor_context"][key]) for row in rows) for key in ACTOR_LIST_KEYS}, "schema_validation_error_count": 0}
+
 
 class SceneFactValidationError(ValueError):
     pass
 
-def load_scene_fact_validator(schema_path: Path) -> Draft202012Validator:
-    schema = json.loads(schema_path.read_text(encoding='utf-8'))
+
+def load_scene_fact_validator(schema_path):
+    schema = json.loads(Path(schema_path).read_text(encoding="utf-8"))
     Draft202012Validator.check_schema(schema)
     return Draft202012Validator(schema)
 
-def validate_scene_fact_record(record: Mapping[str, Any], *, validator: Draft202012Validator) -> None:
+
+def validate_scene_fact_record(record, *, validator):
     errors = sorted(validator.iter_errors(record), key=lambda error: list(error.absolute_path))
     if errors:
         error = errors[0]
-        path = '.'.join((str(value) for value in error.absolute_path)) or '$'
-        raise SceneFactValidationError(f'{path}: {error.message}')
+        path = ".".join(str(value) for value in error.absolute_path) or "$"
+        raise SceneFactValidationError(f"{path}: {error.message}")

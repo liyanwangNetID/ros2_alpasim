@@ -1,61 +1,13 @@
-"""Tests for the consolidated Step 7 Scene-Fact domain."""
+"""Tests for frozen Step 7 Scene-Fact geometry and schema."""
 from __future__ import annotations
-from step7.scene_facts import summarize_final_scene_facts
-import pytest
-from step7.scene_facts import build_final_scene_fact_record
-from step7.scene_facts import summarize_scene_fact_feature_rows
-from step7.scene_facts import assemble_scene_fact_feature_row
+import json
 import math
-import sys
 import unittest
 from pathlib import Path
-from step2.coordinate_utils import Pose2D, yaw_to_quaternion
-from step7.scene_facts import classify_geometric_region, compute_snapshot_actor_geometries, recorded_ego_pose_and_speed, compute_actor_geometry
-from step7.scene_facts import classify_road_context, distance_trend, relative_distance_category, relative_speed_category
-import json
+import pytest
 from project_paths import SCHEMA_ROOT
-from step7.scene_facts import ACTOR_ROLE_KEYS, CAMERA_NAMES, DISTANCE_TREND_CATEGORIES, FINAL_PRESENCE_STATUSES, FINAL_RECORD_REQUIRED_KEYS, FORBIDDEN_FUTURE_INPUTS, OBSERVABILITY_STATUSES, PROXIMITY_STATUSES, QUALITY_STATUSES, RELATIVE_DISTANCE_CATEGORIES, RELATIVE_POSITION_REGIONS, RELATIVE_SPEED_CATEGORIES, ROAD_CONTEXT_TYPES, SCENE_FACT_FORMAT_VERSION
-from step7.scene_facts import SceneFactValidationError, load_scene_fact_validator, validate_scene_fact_record
-
-def test_summary_requires_one_row_per_keyframe():
-    row = {'anchor_id': 'a', 'road_context': {'type': 'lane_following'}, 'quality': {'status': 'usable'}, 'lead_vehicle': {'presence_status': 'not_present'}, 'left_nearby_vehicle': {'presence_status': 'not_present'}, 'right_nearby_vehicle': {'presence_status': 'not_present'}}
-    result = summarize_final_scene_facts(keyframes=({'anchor_id': 'a'},), rows=(row,))
-    assert result['scene_fact_row_count'] == 1
-    assert result['schema_validation_error_count'] == 0
-
-def feature(present=True):
-    absent = {'presence_status': 'not_present', 'absence_reason': 'none'}
-    actor = {'presence_status': 'present', 'track_id': '1', 'label_class': 'automobile', 'relative_position': 'front', 'relative_distance': 'near', 'distance_trend': 'stable_distance', 'relative_speed': 'similar_to_ego', 'observability_status': 'candidate_visible', 'history_status': 'usable', 'lane_match_status': 'matched'}
-    return {'anchor_id': 'a', 'clip_id': 'test_clip_001', 'anchor_ns': 1, 'road_context': {'type': 'lane_following', 'proximity_status': 'none', 'evidence': [], 'nearest_wait_line_distance_m': None}, 'lead_vehicle': actor if present else absent, 'left_nearby_vehicle': absent, 'right_nearby_vehicle': absent, 'quality': {'status': 'usable', 'reasons': []}}
-
-def test_final_mapping_is_schema_shaped():
-    row = build_final_scene_fact_record(feature=feature(), visible_cameras_by_track_id={'1': ['front_wide']})
-    assert row['lead_vehicle']['visible_in_cameras'] == ['front_wide']
-    assert row['road_context']['stop_line_proximity'] == 'none'
-    assert row['quality']['static_occlusion_evaluated'] is False
-
-def test_present_actor_requires_camera_evidence():
-    with pytest.raises(ValueError, match='visible camera'):
-        build_final_scene_fact_record(feature=feature(), visible_cameras_by_track_id={})
-
-def test_visible_cameras_are_sorted_and_deduplicated():
-    row = build_final_scene_fact_record(feature=feature(), visible_cameras_by_track_id={'1': ['front_wide', 'cross_left', 'front_wide']})
-    assert row['lead_vehicle']['visible_in_cameras'] == ['cross_left', 'front_wide']
-
-def test_summary_closes_one_row_per_keyframe():
-    row = {'anchor_id': 'a', 'road_context': {'type': 'lane_following'}, 'quality': {'status': 'usable', 'reasons': []}, 'lead_vehicle': {'presence_status': 'not_present'}, 'left_nearby_vehicle': {'presence_status': 'present'}, 'right_nearby_vehicle': {'presence_status': 'not_present'}}
-    result = summarize_scene_fact_feature_rows(keyframes=({'anchor_id': 'a'},), rows=(row,))
-    assert result['feature_row_count'] == 1
-    assert result['role_presence_status_counts']['left_nearby_vehicle'] == {'present': 1}
-
-def test_row_assembly_preserves_absence_and_quality():
-    keyframe = {'anchor_id': 'a', 'clip_id': 'c', 'anchor_ns': 1}
-    ego = {'anchor_id': 'a', 'lane_match_status': 'unmatched', 'lane_id': None, 'nearest_wait_line_distance_m': None, 'has_intersection_evidence': None, 'intersection_evidence': [], 'lane_length_m': None, 'centerline_arc_length_m': None}
-    roles = {'anchor_id': 'a', 'roles': {'lead_vehicle': None, 'left_nearby_vehicle': None, 'right_nearby_vehicle': None}, 'empty_role_reasons': {'lead_vehicle': 'no_current_actors', 'left_nearby_vehicle': 'no_current_actors', 'right_nearby_vehicle': 'no_current_actors'}}
-    row = assemble_scene_fact_feature_row(keyframe=keyframe, ego_road=ego, role_selection=roles, current_geometry_by_track_id={})
-    assert row['road_context']['type'] == 'unknown'
-    assert row['lead_vehicle']['presence_status'] == 'not_present'
-    assert row['quality']['status'] == 'unknown'
+from step2.coordinate_utils import Pose2D, yaw_to_quaternion
+from step7.scene_facts import (CAMERA_NAMES, DISTANCE_TREND_CATEGORIES, FINAL_RECORD_REQUIRED_KEYS, FORBIDDEN_FUTURE_INPUTS, OBSERVABILITY_STATUSES, PROXIMITY_STATUSES, QUALITY_STATUSES, RELATIVE_DISTANCE_CATEGORIES, RELATIVE_POSITION_REGIONS, RELATIVE_SPEED_CATEGORIES, ROAD_CONTEXT_TYPES, SCENE_FACT_FORMAT_VERSION, SceneFactValidationError, classify_geometric_region, classify_road_context, compute_actor_geometry, compute_snapshot_actor_geometries, distance_trend, load_scene_fact_validator, recorded_ego_pose_and_speed, relative_distance_category, relative_speed_category, validate_scene_fact_record)
 
 def actor(*, x: float, y: float, yaw: float=0.0, velocity_x: float=0.0, velocity_y: float=0.0, speed: float=0.0, track_id: str='actor-1', label_class: str='automobile', is_static: bool=False) -> dict:
     qx, qy, qz, qw = yaw_to_quaternion(yaw)
@@ -184,12 +136,8 @@ def test_actor_semantic_categories():
 class SceneFactSchemaTests(unittest.TestCase):
 
     def test_identity_and_role_fields_are_required(self):
-        for key in ('anchor_id', 'clip_id', 'anchor_ns', *ACTOR_ROLE_KEYS):
+        for key in ('anchor_id', 'clip_id', 'anchor_ns', 'road_context', 'actor_context', 'quality'):
             self.assertIn(key, FINAL_RECORD_REQUIRED_KEYS)
-
-    def test_final_presence_does_not_reveal_hidden_actor(self):
-        self.assertNotIn('not_observed', FINAL_PRESENCE_STATUSES)
-        self.assertEqual(FINAL_PRESENCE_STATUSES, {'present', 'not_present', 'unknown'})
 
     def test_first_version_has_four_selected_cameras(self):
         self.assertEqual(CAMERA_NAMES, ('front_wide', 'front_tele', 'cross_left', 'cross_right'))
@@ -222,8 +170,22 @@ class SceneFactSchemaTests(unittest.TestCase):
             with self.subTest(definition_name=definition_name):
                 self.assertEqual(set(definitions[definition_name]['enum']), expected)
         self.assertEqual(set(definitions['roadContext']['properties']['type']['enum']), set(ROAD_CONTEXT_TYPES))
-        self.assertEqual(set(definitions['absentActorRole']['properties']['presence_status']['enum']), FINAL_PRESENCE_STATUSES - {'present'})
-        self.assertEqual(set(definitions['presentActorRole']['properties']['observability_status']['enum']), {'candidate_visible', 'partially_occluded'})
+        self.assertEqual(
+            definitions["actorContext"]["properties"]["lead_actors"]["maxItems"],
+            4,
+        )
+        self.assertEqual(
+            definitions["actorContext"]["properties"]["left_nearby_actors"]["maxItems"],
+            6,
+        )
+        self.assertEqual(
+            definitions["actorContext"]["properties"]["right_nearby_actors"]["maxItems"],
+            6,
+        )
+        self.assertEqual(
+            set(definitions["actor"]["properties"]["observability_status"]["enum"]),
+            {"candidate_visible", "partially_occluded"},
+        )
 if __name__ == '__main__':
     unittest.main(verbosity=2)
 

@@ -1,19 +1,29 @@
-"""Step 7H deterministic Actor-role selection domain.
-
-Contains evidence joining, eligibility, stable ranking, conflict prevention, empty-role reasons, and summary contracts."""
+"""Step 7H deterministic bounded Actor-list selection."""
 from __future__ import annotations
+
+from collections import Counter
 from dataclasses import dataclass
 from typing import Any, Mapping, Sequence
-from step7.scene_facts import ACTOR_ROLE_KEYS
-from collections import Counter
-VEHICLE_CLASSES = frozenset({'automobile', 'bus', 'heavy_truck', 'other_vehicle', 'trailer', 'train_or_tram_car'})
-MAXIMUM_LEAD_DISTANCE_M = 80.0
-MAXIMUM_SIDE_DISTANCE_M = 30.0
-MAXIMUM_SIDE_REAR_M = 15.0
-MAXIMUM_SIDE_FRONT_M = 30.0
-MAXIMUM_SIDE_LATERAL_M = 8.0
-LEAD_LATERAL_LIMIT_M = 4.5
+
+TRAFFIC_ACTOR_CLASSES = frozenset({
+    "automobile", "bus", "heavy_truck", "other_vehicle", "trailer",
+    "train_or_tram_car", "rider", "person",
+})
+ACTOR_LIST_KEYS = ("lead_actors", "left_nearby_actors", "right_nearby_actors")
+ACTOR_LIST_LIMITS = {"lead_actors": 4, "left_nearby_actors": 6, "right_nearby_actors": 6}
+LEAD_FORWARD_TIME_HORIZON_SEC = 10.0
+SIDE_FORWARD_TIME_HORIZON_SEC = 5.0
+REAR_TIME_HORIZON_SEC = 2.0
+MINIMUM_FORWARD_HORIZON_M = 20.0
+MAXIMUM_SIDE_FORWARD_HORIZON_M = 120.0
+MINIMUM_REAR_HORIZON_M = 15.0
+MAXIMUM_REAR_HORIZON_M = 50.0
+LEAD_LATERAL_LIMIT_M = 2.5
 SIDE_LATERAL_DEADBAND_M = 0.5
+NEARBY_LATERAL_LIMIT_M = 12.0
+MAXIMUM_PERSON_SIDE_FORWARD_HORIZON_M = 30.0
+NEAR_STATIONARY_SPEED_MPS = 0.5
+
 
 @dataclass(frozen=True, slots=True)
 class ActorRoleCandidate:
@@ -24,133 +34,168 @@ class ActorRoleCandidate:
     history: Mapping[str, Any]
     road: Mapping[str, Any]
 
-def _identity(row: Mapping[str, Any]) -> tuple[str, str]:
-    return (str(row['anchor_id']), str(row['track_id']))
 
-def join_actor_role_inputs(*, geometry_rows: Sequence[Mapping[str, Any]], visibility_rows: Sequence[Mapping[str, Any]], history_rows: Sequence[Mapping[str, Any]], road_rows: Sequence[Mapping[str, Any]]) -> tuple[ActorRoleCandidate, ...]:
-    """Strictly join one Anchor's four Actor-level evidence sources."""
-    sources = {'geometry': tuple(geometry_rows), 'visibility': tuple(visibility_rows), 'history': tuple(history_rows), 'road': tuple(road_rows)}
+def _identity(row):
+    return str(row["anchor_id"]), str(row["track_id"])
+
+
+def join_actor_role_inputs(*, geometry_rows, visibility_rows, history_rows, road_rows):
+    sources = {
+        "geometry": tuple(geometry_rows), "visibility": tuple(visibility_rows),
+        "history": tuple(history_rows), "road": tuple(road_rows),
+    }
     indexes = {}
     for name, rows in sources.items():
         index = {}
         for row in rows:
             key = _identity(row)
             if key in index:
-                raise ValueError(f'duplicate {name} Actor identity: {key}')
+                raise ValueError(f"duplicate {name} Actor identity: {key}")
             index[key] = row
         indexes[name] = index
-    identities = set(indexes['geometry'])
-    for name in ('visibility', 'history', 'road'):
+    identities = set(indexes["geometry"])
+    for name in ("visibility", "history", "road"):
         if set(indexes[name]) != identities:
             missing = sorted(identities - set(indexes[name]))[:5]
             extra = sorted(set(indexes[name]) - identities)[:5]
-            raise ValueError(f'{name} Actor identities do not close; missing={missing} extra={extra}')
-    candidates = []
+            raise ValueError(f"{name} Actor identities do not close; missing={missing} extra={extra}")
+    result = []
     for key in sorted(identities):
-        geometry = indexes['geometry'][key]
-        labels = {str(geometry['label_class']), str(indexes['visibility'][key]['label_class']), str(indexes['history'][key]['label_class']), str(indexes['road'][key]['label_class'])}
+        labels = {str(indexes[name][key]["label_class"]) for name in indexes}
         if len(labels) != 1:
-            raise ValueError(f'Actor class mismatch for {key}: {sorted(labels)}')
-        candidates.append(ActorRoleCandidate(track_id=key[1], label_class=labels.pop(), geometry=geometry, visibility=indexes['visibility'][key], history=indexes['history'][key], road=indexes['road'][key]))
-    return tuple(candidates)
+            raise ValueError(f"Actor class mismatch for {key}: {sorted(labels)}")
+        result.append(ActorRoleCandidate(
+            track_id=key[1], label_class=labels.pop(), geometry=indexes["geometry"][key],
+            visibility=indexes["visibility"][key], history=indexes["history"][key],
+            road=indexes["road"][key],
+        ))
+    return tuple(result)
 
-def _base_eligible(candidate: ActorRoleCandidate) -> bool:
-    return candidate.label_class in VEHICLE_CLASSES and candidate.visibility['shadow_status'] == 'shadow_visible'
 
-def _role_record(candidate: ActorRoleCandidate, role: str) -> dict[str, Any]:
-    geometry = candidate.geometry
-    road = candidate.road
-    history = candidate.history
-    return {'role': role, 'track_id': candidate.track_id, 'label_class': candidate.label_class, 'relative_x_m': float(geometry['relative_x_m']), 'relative_y_m': float(geometry['relative_y_m']), 'planar_distance_m': float(geometry['planar_distance_m']), 'geometric_region': str(geometry['geometric_region']), 'ego_lane_relation': str(road['ego_lane_relation']), 'lane_match_status': str(road['lane_match_status']), 'history_status': str(history['history_status']), 'mean_distance_rate_mps': history['mean_distance_rate_mps'], 'visibility_policy_status': str(candidate.visibility['shadow_status']), 'winning_cell_count': int(candidate.visibility['winning_cell_count'])}
+def _base_eligible(candidate):
+    return candidate.label_class in TRAFFIC_ACTOR_CLASSES and candidate.visibility["shadow_status"] == "shadow_visible"
 
-def _lead_candidates(candidates: Sequence[ActorRoleCandidate]):
-    result = []
-    for candidate in candidates:
+
+def _role_record(candidate, role, rank):
+    geometry, road, history = candidate.geometry, candidate.road, candidate.history
+    return {
+        "role": role, "role_rank": rank, "track_id": candidate.track_id,
+        "label_class": candidate.label_class,
+        "relative_x_m": float(geometry["relative_x_m"]),
+        "relative_y_m": float(geometry["relative_y_m"]),
+        "planar_distance_m": float(geometry["planar_distance_m"]),
+        "geometric_region": str(geometry["geometric_region"]),
+        "ego_lane_relation": str(road["ego_lane_relation"]),
+        "lane_match_status": str(road["lane_match_status"]),
+        "history_status": str(history["history_status"]),
+        "mean_distance_rate_mps": history["mean_distance_rate_mps"],
+        "visibility_policy_status": str(candidate.visibility["shadow_status"]),
+        "winning_cell_count": int(candidate.visibility["winning_cell_count"]),
+        "actor_speed_mps": float(geometry["actor_speed_mps"]),
+        "ego_speed_mps": float(geometry["ego_speed_mps"]),
+        "relative_longitudinal_speed_mps": float(geometry["relative_longitudinal_speed_mps"]),
+        "ego_actor_speed_gap_mps": float(geometry["ego_speed_mps"]) - float(geometry["actor_speed_mps"]),
+    }
+
+
+def actor_selection_horizons(reference_ego_speed_mps):
+    speed = max(0.0, float(reference_ego_speed_mps))
+    return {
+        "reference_ego_speed_mps": speed,
+        "forward_horizon_m": max(MINIMUM_FORWARD_HORIZON_M, speed * LEAD_FORWARD_TIME_HORIZON_SEC),
+        "side_forward_horizon_m": min(
+            MAXIMUM_SIDE_FORWARD_HORIZON_M,
+            max(MINIMUM_FORWARD_HORIZON_M, speed * SIDE_FORWARD_TIME_HORIZON_SEC),
+        ),
+        "rear_horizon_m": min(
+            MAXIMUM_REAR_HORIZON_M,
+            max(MINIMUM_REAR_HORIZON_M, speed * REAR_TIME_HORIZON_SEC),
+        ),
+    }
+
+
+def _side_forward_limit(candidate, limit):
+    return min(float(limit), MAXIMUM_PERSON_SIDE_FORWARD_HORIZON_M) if candidate.label_class == "person" else float(limit)
+
+
+def _side_priority(candidate):
+    current = float(candidate.geometry["actor_speed_mps"])
+    historical = candidate.history.get("mean_actor_speed_mps")
+    if current > NEAR_STATIONARY_SPEED_MPS:
+        return 0
+    if historical is not None and float(historical) > NEAR_STATIONARY_SPEED_MPS:
+        return 1
+    return 2
+
+
+def select_actor_roles(*, candidates, reference_ego_speed_mps=None):
+    values = tuple(candidates)
+    ids = [value.track_id for value in values]
+    if len(ids) != len(set(ids)):
+        raise ValueError("role candidates must have unique track_id values")
+    if reference_ego_speed_mps is None:
+        reference_ego_speed_mps = max((float(value.geometry["ego_speed_mps"]) for value in values), default=0.0)
+    context = actor_selection_horizons(reference_ego_speed_mps)
+    forward, side_forward, rear = context["forward_horizon_m"], context["side_forward_horizon_m"], context["rear_horizon_m"]
+    ranked = {key: [] for key in ACTOR_LIST_KEYS}
+    for candidate in values:
         if not _base_eligible(candidate):
             continue
         geometry = candidate.geometry
-        x = float(geometry['relative_x_m'])
-        y = float(geometry['relative_y_m'])
-        distance = float(geometry['planar_distance_m'])
-        relation = str(candidate.road['ego_lane_relation'])
-        same_lane = relation == 'same'
-        geometric_fallback = relation == 'unknown' and abs(y) <= LEAD_LATERAL_LIMIT_M
-        if x > 0.5 and distance <= MAXIMUM_LEAD_DISTANCE_M and (same_lane or geometric_fallback):
-            result.append((0 if same_lane else 1, x, abs(y), distance, candidate.track_id, candidate))
-    return result
-
-def _side_candidates(candidates: Sequence[ActorRoleCandidate], *, side: str):
-    if side not in ('left', 'right'):
-        raise ValueError('side must be left or right')
-    result = []
-    expected_relation = f'{side}_adjacent'
-    for candidate in candidates:
-        if not _base_eligible(candidate):
+        x, y = float(geometry["relative_x_m"]), float(geometry["relative_y_m"])
+        if x < -rear:
             continue
-        geometry = candidate.geometry
-        x = float(geometry['relative_x_m'])
-        y = float(geometry['relative_y_m'])
-        distance = float(geometry['planar_distance_m'])
-        signed_lateral = y if side == 'left' else -y
-        side_ok = SIDE_LATERAL_DEADBAND_M < signed_lateral <= MAXIMUM_SIDE_LATERAL_M
-        relation = str(candidate.road['ego_lane_relation'])
-        topology_match = relation == expected_relation
-        geometric_fallback = relation in ('unknown', 'unrelated') and side_ok
-        if side_ok and -MAXIMUM_SIDE_REAR_M <= x <= MAXIMUM_SIDE_FRONT_M and (distance <= MAXIMUM_SIDE_DISTANCE_M) and (topology_match or geometric_fallback):
-            result.append((0 if topology_match else 1, abs(y), abs(x), distance, candidate.track_id, candidate))
-    return result
+        lateral, distance = abs(y), float(geometry["planar_distance_m"])
+        relation = str(candidate.road["ego_lane_relation"])
+        if 0.5 < x <= forward and lateral <= LEAD_LATERAL_LIMIT_M:
+            closing = max(0.0, -float(geometry["relative_longitudinal_speed_mps"]))
+            ttc = x / closing if closing > 1e-6 else float("inf")
+            relation_priority = {"same": 0, "successor": 1, "predecessor": 1, "unknown": 2, "left_adjacent": 3, "right_adjacent": 3, "unrelated": 4}.get(relation, 5)
+            ranked["lead_actors"].append((x, lateral, relation_priority, ttc, distance, candidate.track_id, candidate))
+        elif -rear <= x <= _side_forward_limit(candidate, side_forward) and SIDE_LATERAL_DEADBAND_M < y <= NEARBY_LATERAL_LIMIT_M:
+            ranked["left_nearby_actors"].append((_side_priority(candidate), abs(x), lateral, distance, candidate.track_id, candidate))
+        elif -rear <= x <= _side_forward_limit(candidate, side_forward) and SIDE_LATERAL_DEADBAND_M < -y <= NEARBY_LATERAL_LIMIT_M:
+            ranked["right_nearby_actors"].append((_side_priority(candidate), abs(x), lateral, distance, candidate.track_id, candidate))
+    role_names = {"lead_actors": "lead_actor", "left_nearby_actors": "left_nearby_actor", "right_nearby_actors": "right_nearby_actor"}
+    selected, metadata, used = {}, {}, set()
+    for key in ACTOR_LIST_KEYS:
+        ordered, chosen = sorted(ranked[key]), []
+        for value in ordered:
+            candidate = value[-1]
+            if candidate.track_id in used:
+                continue
+            chosen.append(candidate)
+            used.add(candidate.track_id)
+            if len(chosen) == ACTOR_LIST_LIMITS[key]:
+                break
+        selected[key] = [_role_record(candidate, role_names[key], rank) for rank, candidate in enumerate(chosen, 1)]
+        metadata[key] = {
+            "candidate_count": len(ordered), "selected_count": len(chosen),
+            "maximum_count": ACTOR_LIST_LIMITS[key], "truncated": len(ordered) > len(chosen),
+        }
+    return {**selected, "selection_context": {**context, "lists": metadata}}
 
-def select_actor_roles(*, candidates: Sequence[ActorRoleCandidate]) -> dict[str, Any]:
-    """Select three mutually exclusive roles with deterministic ranking."""
-    candidate_values = tuple(candidates)
-    track_ids = [item.track_id for item in candidate_values]
-    if len(track_ids) != len(set(track_ids)):
-        raise ValueError('role candidates must have unique track_id values')
-    selected = {}
-    used = set()
-    specifications = (('lead_vehicle', sorted(_lead_candidates(candidate_values))), ('left_nearby_vehicle', sorted(_side_candidates(candidate_values, side='left'))), ('right_nearby_vehicle', sorted(_side_candidates(candidate_values, side='right'))))
-    for role, ranked in specifications:
-        chosen = next((item[-1] for item in ranked if item[-1].track_id not in used), None)
-        if chosen is None:
-            selected[role] = None
-        else:
-            used.add(chosen.track_id)
-            selected[role] = _role_record(chosen, role)
-    if tuple(selected) != ACTOR_ROLE_KEYS:
-        raise RuntimeError('role output order does not match shared schema')
-    return selected
-
-def empty_role_reasons(*, candidates: Sequence[ActorRoleCandidate], roles: Mapping[str, Any]) -> dict[str, str | None]:
-    """Return one compact reason for each unfilled role."""
-    eligible = tuple((item for item in candidates if _base_eligible(item)))
-    reasons = {}
-    for role in ACTOR_ROLE_KEYS:
-        if roles[role] is not None:
-            reasons[role] = None
-        elif not candidates:
-            reasons[role] = 'no_current_actors'
-        elif not eligible:
-            reasons[role] = 'no_visible_vehicle_candidates'
-        else:
-            reasons[role] = 'no_candidate_in_role_region'
-    return reasons
 
 def summarize_actor_role_rows(*, keyframes, rows):
-    anchors = [str(row['anchor_id']) for row in keyframes]
-    if len(anchors) != len(set(anchors)):
-        raise ValueError('Keyframe Anchor ids must be unique')
-    row_anchors = [str(row['anchor_id']) for row in rows]
-    if len(rows) != len(anchors) or set(row_anchors) != set(anchors):
-        raise ValueError('role rows must contain exactly one row per Keyframe')
-    role_counts = {}
-    empty_reasons = {}
-    selected_pairs = []
-    for role in ACTOR_ROLE_KEYS:
-        role_counts[role] = sum((row['roles'][role] is not None for row in rows))
-        empty_reasons[role] = dict(sorted(Counter((row['empty_role_reasons'][role] for row in rows if row['empty_role_reasons'][role] is not None)).items()))
+    anchors = [str(row["anchor_id"]) for row in keyframes]
+    if len(anchors) != len(set(anchors)) or {str(row["anchor_id"]) for row in rows} != set(anchors):
+        raise ValueError("role rows must contain exactly one row per Keyframe")
+    counts = Counter({key: 0 for key in ACTOR_LIST_KEYS})
+    truncations = Counter({key: 0 for key in ACTOR_LIST_KEYS})
+    assignments = 0
     for row in rows:
-        selected = [value['track_id'] for value in row['roles'].values() if value is not None]
-        if len(selected) != len(set(selected)):
-            raise ValueError('one Actor occupies multiple roles in one Keyframe')
-        selected_pairs.extend(((row['anchor_id'], track_id) for track_id in selected))
-    return {'schema_version': 'step7h-actor-role-selection-summary-v01', 'keyframe_count': len(anchors), 'role_row_count': len(rows), 'selected_role_counts': role_counts, 'empty_role_reason_counts': empty_reasons, 'selected_actor_role_assignment_count': len(selected_pairs), 'role_conflict_count': 0}
+        selected_ids = []
+        for key in ACTOR_LIST_KEYS:
+            actors = row["roles"][key]
+            counts[key] += len(actors)
+            assignments += len(actors)
+            truncations[key] += int(row["roles"]["selection_context"]["lists"][key]["truncated"])
+            selected_ids.extend(str(actor["track_id"]) for actor in actors)
+        if len(selected_ids) != len(set(selected_ids)):
+            raise ValueError("one Actor occupies multiple role lists in one Keyframe")
+    return {
+        "schema_version": "step7h-actor-role-selection-summary-v02",
+        "keyframe_count": len(anchors), "role_row_count": len(rows),
+        "selected_actor_counts": dict(counts), "truncated_anchor_counts": dict(truncations),
+        "selected_actor_role_assignment_count": assignments, "role_conflict_count": 0,
+    }

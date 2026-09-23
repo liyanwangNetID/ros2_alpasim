@@ -87,21 +87,19 @@ def main():
             anchor = str(keyframe["anchor_id"])
             feature = features[anchor]
             visible_cameras_by_track_id = {}
-            for role in ("lead_vehicle", "left_nearby_vehicle", "right_nearby_vehicle"):
-                selected = feature[role]
-                if selected["presence_status"] != "present":
-                    continue
-                track_id = str(selected["track_id"])
-                identity = (anchor, track_id)
-                source_row = observability.get(identity)
-                if source_row is None:
-                    raise ValueError(f"selected Actor lacks observability row: {identity}")
-                if source_row["observability_status"] != "candidate_visible":
-                    raise ValueError(f"selected Actor is not candidate-visible: {identity}")
-                camera_names = tuple(str(value) for value in source_row["visible_in_cameras"])
-                if not camera_names:
-                    raise ValueError(f"selected Actor lacks visible cameras: {identity}")
-                visible_cameras_by_track_id[track_id] = camera_names
+            for role in ("lead_actors", "left_nearby_actors", "right_nearby_actors"):
+                for selected in feature["actor_context"][role]:
+                    track_id = str(selected["track_id"])
+                    identity = (anchor, track_id)
+                    source_row = observability.get(identity)
+                    if source_row is None:
+                        raise ValueError(f"selected Actor lacks observability row: {identity}")
+                    if source_row["observability_status"] != "candidate_visible":
+                        raise ValueError(f"selected Actor is not candidate-visible: {identity}")
+                    camera_names = tuple(str(value) for value in source_row["visible_in_cameras"])
+                    if not camera_names:
+                        raise ValueError(f"selected Actor lacks visible cameras: {identity}")
+                    visible_cameras_by_track_id[track_id] = camera_names
             row = build_final_scene_fact_record(
                 feature=feature,
                 visible_cameras_by_track_id=visible_cameras_by_track_id,

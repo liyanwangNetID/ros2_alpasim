@@ -14,11 +14,7 @@ from step7.observability import (
     evaluate_frozen_dynamic_occlusion_policy,
 )
 from step7.actor_roles import summarize_actor_role_rows
-from step7.actor_roles import (
-    empty_role_reasons,
-    join_actor_role_inputs,
-    select_actor_roles,
-)
+from step7.actor_roles import join_actor_role_inputs, select_actor_roles
 from step7.scene_facts import compute_snapshot_actor_geometries
 
 KEYFRAMES = ANNOTATION_ROOT / "keyframes.jsonl"
@@ -136,17 +132,47 @@ def main():
                 history_rows=history_by_anchor.get(anchor_id, ()),
                 road_rows=road_by_anchor.get(anchor_id, ()),
             )
-            roles = select_actor_roles(candidates=candidates)
-            empty_reasons = empty_role_reasons(candidates=candidates, roles=roles)
-            assignment_count += sum(value is not None for value in roles.values())
+            ego_history = None
+            for waypoint_count in (31, 21, 11, 6, 2):
+                candidate_history = reader.get_ego_history(
+                    anchor_ns,
+                    num_waypoints=waypoint_count,
+                    interval_ns=100_000_000,
+                )
+                if candidate_history is not None and len(candidate_history) >= 2:
+                    ego_history = candidate_history
+                    break
+            pose_speed_mps = 0.0
+            if ego_history is not None:
+                trajectory_distance_m = sum(
+                    (
+                        (second.relative_x - first.relative_x) ** 2
+                        + (second.relative_y - first.relative_y) ** 2
+                    ) ** 0.5
+                    for first, second in zip(ego_history, ego_history[1:])
+                )
+                duration_sec = (
+                    ego_history[-1].target_stamp_ns
+                    - ego_history[0].target_stamp_ns
+                ) / 1_000_000_000
+                if duration_sec > 0.0:
+                    pose_speed_mps = trajectory_distance_m / duration_sec
+            executed = reader.get_ego_state_at(anchor_ns)
+            executed_speed_mps = 0.0 if executed is None else float(executed.speed)
+            reference_ego_speed_mps = max(
+                float(ego.message["speed"]),
+                executed_speed_mps,
+                pose_speed_mps,
+            )
+            roles = select_actor_roles(candidates=candidates, reference_ego_speed_mps=reference_ego_speed_mps)
+            assignment_count += sum(len(roles[key]) for key in ("lead_actors", "left_nearby_actors", "right_nearby_actors"))
             row = {
-                "schema_version": "step7h-actor-role-selection-v01",
+                "schema_version": "step7h-actor-role-selection-v02",
                 "anchor_id": anchor_id,
                 "clip_id": clip_id,
                 "anchor_ns": anchor_ns,
                 "candidate_actor_count": len(candidates),
                 "roles": roles,
-                "empty_role_reasons": empty_reasons,
                 "future_actor_data_used": False,
                 "future_ego_data_used": False,
                 "planner_output_used": False,
@@ -178,8 +204,8 @@ def main():
     os.replace(temporary_summary, SUMMARY)
     print("Step 7H Actor-role selection export")
     print("keyframes:", report["keyframe_count"])
-    print("selected roles:", report["selected_role_counts"])
-    print("empty reasons:", report["empty_role_reason_counts"])
+    print("selected actors:", report["selected_actor_counts"])
+    print("truncated Anchors:", report["truncated_anchor_counts"])
     print("role conflicts:", report["role_conflict_count"])
     print("sha256:", report["output_sha256"])
     print("elapsed:", duration_text(report["elapsed_seconds"]))
