@@ -1,11 +1,12 @@
 # AlpaSim VLM Dataset Development Handoff
 
+**Document status:** Updated to the frozen Step 7 codebase on 2026-09-24  
 **Audience:** A new AI assistant or developer continuing this repository.  
-**Purpose:** Read this document before changing dataset code. It records the current implementation, frozen outputs, development constraints, active Step 7 state, and the exact next work.
+**Purpose:** This is the primary, self-contained handoff. A new conversation should be able to continue directly with Step 8 after reading this file, without requiring additional project history from the user.
 
 ## 1. Project goal
 
-Build a supervised dataset for VLM backbone training from recorded AlpaSim driving clips.
+Build a supervised dataset for VLM backbone training from recorded AlpaSim driving Clips.
 
 ### Model input
 
@@ -16,9 +17,14 @@ Build a supervised dataset for VLM backbone training from recorded AlpaSim drivi
 
 ### Supervision target
 
-Structured Scene Facts, driving decision, and short causal reasoning. Step 7 produces structured Scene Facts only. Natural-language reasoning begins later.
+- Structured Scene Facts
+- Driving decision
+- Structured chain of causality
+- Short causal reasoning
 
-## 2. Repositories and paths
+Step 7 produces structured Scene Facts only. Step 8 produces structured chain of causality. Natural-language reasoning begins in Step 9.
+
+## 2. Repositories, paths, and artifact policy
 
 There are two repositories and one external data root:
 
@@ -28,20 +34,40 @@ There are two repositories and one external data root:
 
 Python tools use `scripts/dataset_tools/project_paths.py`. Shell tools use `scripts/load_local_paths.sh`. Environment variables and supported CLI path arguments override local defaults.
 
-On the current development machine, the artifact root is `/home/lab/data_from_alpasim`, with formal artifacts under `annotations`, `manifests`, `reports`, `schemas`, and `backups`. Do not store formal generated artifacts in the code directory.
+On the current development machine:
+
+```text
+ALPASIM_ROS2_WS=/home/lab/alpasim_ros2_ws
+ALPASIM_DATA_ROOT=/home/lab/data_from_alpasim
+```
+
+Formal artifacts belong under:
+
+```text
+annotations/
+manifests/
+reports/
+schemas/
+backups/
+```
+
+Do not store formal generated artifacts in the code directory. The data artifact root is configured per machine through shell configuration.
 
 ## 3. Development rules for the AI assistant
 
 - The user manages Git. Do not inspect, stage, commit, or modify Git state unless explicitly requested.
 - Work by Step and close each Step before moving on.
-- Use larger closed-loop batches: implementation, full tests, artifact comparison, cleanup. Split into smaller diagnostics only after a failure.
-- Prefer the complete test suite directly unless a high-risk change needs a focused diagnostic.
-- Do not ask for confirmation between routine substeps. Continue until a user decision is genuinely required.
-- When multiple versions exist, inspect the actual import and execution chain before deciding which version is active.
+- Use larger closed-loop batches: implementation, full tests, artifact comparison, and cleanup. Split into focused diagnostics only after a failure.
+- Prefer the complete test suite directly unless a high-risk change requires a focused diagnostic.
+- After a verified substep, continue to the next development action. Stop only when a user decision is genuinely required.
+- When multiple versions exist, inspect the actual imports, execution chain, version constants, and product source before selecting the active implementation.
 - Preserve deterministic outputs and compare SHA-256 after production changes.
-- Do not mix temporary diagnostics, Shadow outputs, and production artifacts.
-- If pasted Shell or Python text is corrupted, especially if a star character replaces letters, stop immediately. Never provide commands containing corrupted identifiers.
-- Do not use heredoc or `cat` instructions for the user to create new scripts. The assistant should create files directly when file creation is requested.
+- Do not mix temporary diagnostics, Shadow outputs, review products, and production artifacts.
+- Non-ROS dataset tools belong under `scripts/dataset_tools/`.
+- Do not ask the user to create scripts with `cat`, heredoc, or manual copy-and-paste. Create downloadable files directly.
+- When multiple downloadable files are supplied, also provide a directly executable batch move or installation command.
+- Before sending Shell or Python commands, verify that no characters are corrupted or replaced by star characters.
+- Do not require `tar.gz` uploads. If source must be uploaded together, use an uploadable plain-text bundle.
 
 ## 4. Data leakage boundaries
 
@@ -51,11 +77,24 @@ Step 4 generates supervision labels and may use future Ego trajectory within its
 
 ### Step 6
 
-Step 6 generates model input and must not use future execution, future speed, future controls, or Meta-action labels. It uses only the Route available at or before the Anchor, Anchor-time Ego state, and static VectorMap.
+Step 6 generates model input and must not use future execution, future speed, future controls, or Meta-action labels. Step 6 uses only the Route available at or before the Anchor, Anchor-time Ego state, and static VectorMap.
 
 ### Step 7
 
-Step 7 describes the scene at the Anchor. It may use current and past Actor snapshots at or before the Anchor, current Ego state, camera calibration and images, and static VectorMap. It must not use Actor future, Ego future, planner output, future executed behavior, or Meta-action to decide current facts or observability.
+Step 7 describes the scene at the Anchor. Step 7 may use current and past Actor snapshots at or before the Anchor, current Ego state, camera calibration and images, and static VectorMap.
+
+Step 7 must not use:
+
+- Actor future
+- Ego future
+- planner output
+- complete-recording future trajectory
+- future executed behavior
+- Meta-action labels as current-scene evidence
+
+### Step 8
+
+Step 8 may combine frozen current-scene evidence, coarse Navigation, and supervision labels to produce a structured chain of causality. Step 8 must keep model inputs and supervision sources explicit so future supervision does not leak into the model-input side of the sample.
 
 ## 5. Dataset development route
 
@@ -75,7 +114,7 @@ Step 11  Dataset split
 Step 12  Audit and statistics
 ```
 
-Steps 1 through 6 are implemented and reorganized. Step 7 is actively under development. Steps 8 through 12 have not started.
+Steps 1 through 7 are implemented. Step 7 is frozen. Steps 8 through 12 have not started.
 
 ## 6. Current code organization
 
@@ -94,22 +133,75 @@ scripts/dataset_tools/tests/step1/
 scripts/dataset_tools/tests/step7/
 ```
 
-Non-ROS dataset utility scripts belong under `scripts/dataset_tools/` and the corresponding Step package. Formal artifacts belong under `ALPASIM_DATA_ROOT`.
+The frozen Step 7 package contains:
+
+```text
+actor_roles.py
+build_actor_roles.py
+build_history.py
+build_observability.py
+build_occlusion.py
+build_projection_evidence.py
+build_road_context.py
+build_scene_facts.py
+build_scene_features.py
+build_step7.py
+geometry.py
+history.py
+observability.py
+occlusion.py
+projection.py
+raster.py
+review_scene_fact.py
+road_context.py
+scene_facts.py
+```
+
+A reusable Step 7 diagnostic remains outside the package:
+
+```text
+scripts/render_step7_all_actor_debug.py
+```
 
 ## 7. Steps 1 through 4
 
-Steps 1 through 4 are implemented. Their formal behavior and frozen outputs were not changed during the latest Step 5 through Step 7 reorganization.
+Steps 1 through 4 are implemented. Their formal behavior and frozen outputs were not changed during the Step 5 through Step 7 reorganization and freeze work.
 
-### Step 4 frozen result
+### Step 1: Clip Manifest
 
-- Candidate Anchors: 10,231
-- Meta-action format: `0.2-draft`
-- Generator: `0.2.1`
-- Rule version: `meta_action_rules_v0.2.1`
-- Formal output: `annotations/v0.1-draft/meta_actions_v0.2.jsonl`
-- SHA-256: `a07aacf417829e11d2fe437f01318d509d2d5a007a196440f3d9be95110f5973`
+Step 1 scans recorded Clip structure and validates required raw artifacts, readability, timestamp consistency, temporal ranges, Route, Actors, ground-truth availability, and VectorMap availability.
 
-A conservative direction-consistency guard changes contradictory branch-relative turn labels to `unknown` rather than emitting an opposite-direction turn.
+### Step 2: Unified reading API
+
+Step 2 provides unified Clip reading, temporal indexes, bounded lookup, interpolation, coordinate conversion, calibration loading, and VectorMap caching. Shared components include:
+
+```text
+scripts/dataset_tools/step2/clip_reader.py
+scripts/dataset_tools/step2/temporal_index.py
+scripts/dataset_tools/step2/coordinate_utils.py
+scripts/dataset_tools/step2/vector_map_reader.py
+```
+
+### Step 3: Candidate Anchors
+
+Step 3 uses camera and Ego history, Route availability, and future ground-truth availability to select eligible Candidate Anchors.
+
+### Step 4: Meta-actions
+
+Step 4 generates supervision labels using future Ego trajectory, executed motion, and lane topology within the defined label horizon.
+
+Frozen Step 4 result:
+
+```text
+Candidate Anchors: 10231
+Meta-action format: 0.2-draft
+Generator: 0.2.1
+Rule version: meta_action_rules_v0.2.1
+Formal output: annotations/v0.1-draft/meta_actions_v0.2.jsonl
+SHA-256: a07aacf417829e11d2fe437f01318d509d2d5a007a196440f3d9be95110f5973
+```
+
+A conservative direction-consistency guard changes contradictory branch-relative turn labels to `unknown` instead of emitting an opposite-direction turn.
 
 ## 8. Step 5: Keyframes
 
@@ -119,26 +211,34 @@ Implemented and reorganized. Selection quotas scale with Candidate Anchor count 
 
 ### Production entry point
 
-`python3 -m step5.build_keyframes_v01 --force`
+```bash
+python3 -m step5.build_keyframes_v01 --force
+```
 
 ### Production stages
 
-1. `step5.detect_keyframe_events_v01`
-2. `step5.deduplicate_keyframe_events_v01`
-3. `step5.select_keyframes_v01`
+```text
+step5.detect_keyframe_events_v01
+step5.deduplicate_keyframe_events_v01
+step5.select_keyframes_v01
+```
 
 ### Formal outputs
 
-- `annotations/v0.1-draft/keyframes.jsonl`
-- `reports/keyframe_selection_summary_v0.1.json`
-- `manifests/keyframe_contract_v0.1.json`
+```text
+annotations/v0.1-draft/keyframes.jsonl
+reports/keyframe_selection_summary_v0.1.json
+manifests/keyframe_contract_v0.1.json
+```
 
-### Current verified result
+### Frozen result
 
-- Candidate Anchors: 10,231
-- Event Anchors retained: 2,571
-- Selected Keyframes: 3,500
-- Keyframe SHA-256: `bb3cc755d537c0b8fa0c68aff457106ee00d583bff448bf737c2d286e0ccabf7`
+```text
+Candidate Anchors: 10231
+Event Anchors retained: 2571
+Selected Keyframes: 3500
+Keyframe SHA-256: bb3cc755d537c0b8fa0c68aff457106ee00d583bff448bf737c2d286e0ccabf7
+```
 
 Selection sources:
 
@@ -149,26 +249,30 @@ balanced_stable_longitudinal: 300
 balanced_stable_lateral: 129
 ```
 
-The Keyframe contract records the format, selector and rule versions, upstream Meta-action contract linkage, Candidate count, Event count, Keyframe count, Keyframe SHA-256, and proportional quota policy.
+The Keyframe contract records format, selector and rule versions, upstream Meta-action contract linkage, Candidate count, Event count, Keyframe count, Keyframe SHA-256, and the proportional quota policy.
 
 ## 9. Step 6: Navigation
 
 ### Status
 
-Complete and closed.
+Complete and frozen.
 
 ### Production entry point
 
-`python3 -m step6.build_navigation_v01 --force`
+```bash
+python3 -m step6.build_navigation_v01 --force
+```
 
-### Four production stages
+### Production stages
 
-1. `step6.profile_navigation_branch_context_v01`
-2. `step6.profile_road_level_navigation_features_v01`
-3. `step6.profile_navigation_route_features_v01`
-4. `step6.generate_navigation_v01`
+```text
+step6.profile_navigation_branch_context_v01
+step6.profile_road_level_navigation_features_v01
+step6.profile_navigation_route_features_v01
+step6.generate_navigation_v01
+```
 
-The old Candidate-to-Final double stage was removed because there was no independent manual-review input. The formal generator now writes `navigation.jsonl` directly while preserving the prior final bytes.
+The old Candidate-to-Final double stage was removed because there was no independent manual-review input. The formal generator writes `navigation.jsonl` directly while preserving prior final bytes.
 
 ### Current production modules
 
@@ -182,13 +286,13 @@ step6/profile_navigation_route_features_v01.py
 step6/profile_road_level_navigation_features_v01.py
 ```
 
-`navigation_route_features_v01.py` remains independent because it is shared by three production modules. The old Map Context helper and Road-level helper were merged into their only active profilers.
+`navigation_route_features_v01.py` remains independent because it is shared by three production modules. Old one-use Map Context and Road-level helpers were merged into their active profilers.
 
 ### Contract validation
 
-`step6.generate_navigation_v01` validates `manifests/keyframe_contract_v0.1.json`, including Keyframe SHA-256, record count, unique Anchor IDs, and exact feature Anchor coverage. The production Summary records the contract path, Keyframe SHA-256, Keyframe count, and coverage validity.
+`step6.generate_navigation_v01` validates `manifests/keyframe_contract_v0.1.json`, including Keyframe SHA-256, record count, unique Anchor IDs, and exact feature Anchor coverage. The Summary records the contract path, Keyframe SHA-256, Keyframe count, and coverage validity.
 
-### Current result
+### Frozen result
 
 ```text
 Records: 3500
@@ -213,143 +317,380 @@ navigation.jsonl
   d025699fcfff677e7929c9df13eb72023d8acd6b815d0fa80c604044c6b7bf90
 ```
 
-## 10. Step 7: current development state
+## 10. Step 7: Scene Facts
 
-### Overall status
-
-Step 7 is not complete. Existing code migration is complete, and the active Step 7E geometric evidence chain has been formalized. Final observability policy, Actor-role rules, road facts, final Scene Facts, and unified Step 7 production entry point remain unfinished.
-
-### Current development position
+### Status
 
 ```text
-7A  Schema and vocabulary                     implemented baseline
-7B  Current Actor snapshot access             available through Step 2 reader
-7C  Ego-relative Actor geometry               implemented
-7D  F-theta camera projection                 implemented and tested
-7E  Observability and Actor-to-Actor occlusion
-    - projection foundation                   implemented
-    - low-resolution surface depth and Z-buffer implemented
-    - Actor observability intermediate        generated
-    - geometric occlusion evidence v02        generated and formalized
-    - Shadow scans and policy candidate       available
-    - final observability policy              not frozen
-7F  Relative-motion features                  not completed as production stage
-7G  Road and wait-line features               not completed
-7H  Actor role selection                      not completed
-7I through 7M                                 not completed
+PASS / FROZEN
 ```
 
-### Directory migration
+Step 7 produces exactly one validated Scene-Fact row for each selected Keyframe. The old single-role fields were removed. The formal interface uses bounded Actor lists.
 
-All identified Step 7 Python files were moved from the `dataset_tools` root into `step7/`. Corresponding tests are under `tests/step7/`. After migration, the root scan found zero Step 7 files, the complete test suite passed, and both formal Step 7E products retained their hashes.
+### Unified production entry point
 
-### Packaged v02 dependency closure
+```bash
+python3 -u -m step7.build_step7
+```
 
-The v02 geometric occlusion export dependency closure contains 50 packaged Step 7 modules. Its only local external dependencies are `project_paths` and `step2.clip_reader`.
+Selective rebuild from Actor Role Selection:
 
-### Actor Observability product
+```bash
+python3 -u -m step7.build_step7 \
+  --from-stage actor_roles
+```
 
-- Path: `annotations/v0.1-draft/intermediate/actor_observability_v0.1.jsonl`
-- Structure: one Actor row per `anchor_id` and `track_id`
-- Row count: 151,908
-- Anchor count with Actor rows: 3,474
-- Status counts: `candidate_visible` 86,598; `not_visible` 65,310
-- SHA-256: `ed7204a75dadc0194720cf6512083e8997fe8aeb60afde555c5ebed37b1c4b70`
-
-### Geometric Occlusion evidence v02
-
-- Export entry point: `python3 -m step7.export_step7e_geometric_occlusion_evidence_v02`
-- Path: `annotations/v0.1-draft/step7e_geometric_occlusion_evidence_v02.jsonl`
-- Summary: `annotations/v0.1-draft/step7e_geometric_occlusion_evidence_v02.summary.json`
-- Schema: `step7e-geometric-occlusion-evidence-v02`
-- Actor rows: 151,908
-- Keyframes: 3,500
-- Anchors with Actor rows: 3,474
-- Rowless Anchors: 26
-- Rowless reason: all 26 have one exact Actor snapshot with an empty Actor list
-- Duplicate `anchor_id` and `track_id` identities: 0
-- Evidence statuses: `candidate_without_sampled_surface` 56; `combined_evidence_available` 86,542; `no_geometric_candidate` 65,310
-- Missing-surface projection contexts: 209
-- SHA-256: `635a96ead83d301173461304ee1c946e9370e829404ba5a0e1518a8ce75e7724`
-
-The v02 Writer records `output_sha256`. The v02 Exporter validates `keyframe_contract_v0.1.json` and writes Keyframe contract metadata plus complete rowless-Anchor snapshot coverage into the normal Summary. The previous second-pass Summary regeneration and duplicate coverage-check scripts were deleted.
-
-### Step 7E limitations
-
-- No static-scene occlusion evaluation
-- No building, wall, vegetation, or arbitrary mesh occlusion
-- No rendered depth or instance masks
-- No final visibility thresholds or final Scene-Fact labels yet
-- Geometric evidence is not strict pixel-level ground truth
-
-## 11. Test baseline
-
-Latest complete regression result:
+### Production stages
 
 ```text
-1038 passed, 7 subtests passed
+projection_evidence
+occlusion
+observability_policy
+history
+road_context
+actor_roles
+scene_features
+scene_facts
 ```
+
+### Implemented geometry and observability stack
+
+The frozen implementation contains:
+
+- current Actor geometry
+- F-theta camera calibration and projection
+- Actor oriented 3D boxes
+- adaptive projected edge sampling
+- angular-FOV and near-plane clipping
+- projected hull and surface geometry
+- box surface triangulation
+- front-facing and near-plane-clipped triangles
+- projected triangle raster cells
+- barycentric and perspective depth interpolation
+- Actor surface depth rasters
+- per-camera Actor depth rasters
+- multi-Actor Z-buffer competition
+- per-camera and multi-camera occlusion evidence
+- reviewed Actor observability policy
+- projection context for geometric candidates without sampled surfaces
+- short-history relative motion
+- VectorMap Road Context
+- deterministic Actor-list selection
+- final feature and Scene-Fact export
+- Draft 2020-12 JSON Schema validation
+
+Simulator Actor truth is not automatically visual supervision. Final selected Actors must pass the frozen observability policy. Static-scene occlusion is not evaluated, so final records state:
+
+```json
+"static_occlusion_evaluated": false
+```
+
+### Actor eligibility and lists
+
+Eligible classes include:
+
+```text
+automobile
+bus
+heavy_truck
+other_vehicle
+trailer
+train_or_tram_car
+rider
+person
+```
+
+Non-independent labels, including `protruding_object`, are excluded.
+
+Final lists:
+
+```text
+lead_actors: maximum 4
+left_nearby_actors: maximum 6
+right_nearby_actors: maximum 6
+```
+
+One Actor may occur in only one list per Anchor. Each list has deterministic `role_rank` values beginning at 1.
+
+### Selection ranges
+
+```text
+Lead forward horizon:
+  max(20 m, reference Ego speed * 10 s)
+  no fixed maximum
+
+Side forward horizon:
+  clamp(reference Ego speed * 5 s, 20 m, 120 m)
+
+Rear horizon:
+  clamp(reference Ego speed * 2 s, 15 m, 50 m)
+
+Lead lateral corridor:
+  absolute lateral offset <= 2.5 m
+
+Side lateral range:
+  0.5 m < absolute lateral offset <= 12 m
+
+Side person forward range:
+  maximum 30 m
+```
+
+Lead-corridor `person` and `rider` Actors retain the full Lead horizon. Lead rank follows longitudinal path order. Lane relation is supporting ranking evidence rather than a hard exclusion, so a valid `unrelated` Actor inside the strict Lead corridor may still be selected.
+
+### Reference Ego speed
+
+Actor selection uses the maximum of:
+
+- recorded Ego speed
+- executed Ego-state speed when available
+- recent pose-derived speed
+
+Pose-derived speed uses the longest available past-only history window, approximately 3.0 seconds down to two samples near Clip boundaries.
+
+### Relative semantics
+
+Relative positions:
+
+```text
+front
+front_left
+front_right
+left
+right
+rear_left
+rear
+rear_right
+overlapping
+unknown
+```
+
+Relative distance:
+
+```text
+near: distance <= 10 m
+medium: 10 m < distance <= 30 m
+far: distance > 30 m
+unknown
+```
+
+Distance trend:
+
+```text
+approaching
+receding
+stable_distance
+uncertain
+```
+
+Relative speed:
+
+```text
+slower_than_ego
+similar_to_ego
+faster_than_ego
+stationary
+uncertain
+```
+
+Current thresholds:
+
+```text
+stable distance-rate magnitude <= 0.5 m/s
+stationary Actor speed <= 0.5 m/s
+similar speed difference <= 1.0 m/s
+```
+
+### Road Context
+
+```text
+lane_following
+intersection_approach
+intersection
+unknown
+```
+
+Final fields include `intersection_proximity`, `stop_line_proximity`, and `yield_line_proximity`. These are conservative map-based structural facts. Wait-line type is not fully propagated. A visible STOP sign is not automatically a camera-confirmed Stop-line fact.
+
+### Final record structure
+
+Top-level fields:
+
+```text
+scene_fact_format_version
+generator_version
+rule_version
+anchor_id
+clip_id
+anchor_ns
+road_context
+actor_context
+quality
+```
+
+`actor_context` contains:
+
+```text
+reference_ego_speed_mps
+forward_horizon_m
+side_forward_horizon_m
+rear_horizon_m
+lists
+lead_actors
+left_nearby_actors
+right_nearby_actors
+```
+
+Each selected Actor contains rank, Track ID, class, relative geometry, distance and motion categories, Actor and Ego speeds, observability, visible cameras, quality, and reasons.
+
+### Formal outputs
+
+```text
+annotations/v0.1-draft/intermediate/actor_role_selection_v0.1.jsonl
+annotations/v0.1-draft/intermediate/scene_fact_features_v0.1.jsonl
+annotations/v0.1-draft/scene_facts.jsonl
+annotations/v0.1-draft/step7h_actor_role_selection_summary_v01.json
+annotations/v0.1-draft/step7k_scene_fact_features_summary_v01.json
+annotations/v0.1-draft/step7l_scene_facts_summary_v01.json
+schemas/scene_fact_schema_v0.1-draft.json
+```
+
+The earlier Step 7E products remain historical and implementation evidence, but Step 7 continuation must use the unified current build rather than old standalone exporters.
+
+### Final verified result
+
+```text
+Scene-Fact rows: 3500
+Schema validation errors: 0
+Actor role conflicts: 0
+Road contexts:
+  intersection: 257
+  intersection_approach: 1016
+  lane_following: 2180
+  unknown: 47
+Quality statuses:
+  usable: 2870
+  unknown: 630
+Selected Actors:
+  lead_actors: 3284
+  left_nearby_actors: 4722
+  right_nearby_actors: 5181
+Truncated Anchors:
+  lead_actors: 38
+  left_nearby_actors: 75
+  right_nearby_actors: 127
+```
+
+Final Scene-Fact SHA-256:
+
+```text
+735203f9ddf3b9f49e892edbb185936caa9db1cd46cbfcdd1b9e0f685958e2b5
+```
+
+The final hash remained unchanged after Step 7 code consolidation, compatibility-layer removal, and deterministic rebuild.
+
+### Human review
+
+```bash
+python3 -u -m step7.review_scene_fact \
+  --force
+```
+
+Overlay colors:
+
+```text
+Lead: red
+Left: yellow
+Right: green
+```
+
+Validated review-only offsets for `test_clip_894`:
+
+```text
+front_wide: -16 source-image pixels
+front_tele: -35 source-image pixels
+```
+
+Unconfigured Clips use zero offset. These corrections affect review visualization only, not formal evidence or Scene-Fact bytes.
+
+### Known limitations
+
+- static-scene occlusion is not evaluated
+- no rendered depth or pixel-accurate instance masks
+- some camera-visible objects lack a usable Actor identity or projection at the exact Anchor
+- Step 7 does not fabricate missing Actor state
+- STOP-sign presence is not a dedicated visual fact
+- wait-line type is not fully propagated
+- opposing-traffic direction is not a dedicated final Actor field
+- review alignment offsets are Clip-specific visual corrections
+- final Scene Facts are structured labels, not causality or reasoning text
+
+## 11. Test baseline and deterministic validation
 
 Run the complete suite with:
 
 ```bash
-cd "$ALPASIM_ROS2_WS/scripts/dataset_tools"
-PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest -q
+cd /home/lab/alpasim_ros2_ws/scripts/dataset_tools
+
+PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 \
+  python3 -m pytest -q
 ```
 
-Prefer this complete suite over repeating focused and complete suites unless failure localization is needed.
+The previous fixed count of `1038 passed, 7 subtests passed` belongs to the earlier active-development snapshot. Obsolete compatibility tests were later removed during Step 7 freeze cleanup. The current acceptance condition is that the complete current suite passes.
 
-## 12. Immediate next actions
+Frozen Step 7 production acceptance:
 
-Do not repeat Step 7 directory migration. It is complete.
+```text
+3500 final rows
+0 schema validation errors
+0 role conflicts
+final SHA-256 equals 735203f9ddf3b9f49e892edbb185936caa9db1cd46cbfcdd1b9e0f685958e2b5
+```
 
-The next development batch should remain inside `step7/` and should:
+## 12. Immediate next actions: Step 8
 
-1. Inventory the packaged Step 7 files by role: production library, production entry point, active analysis, Shadow or review tooling, and obsolete one-off diagnostics.
-2. Determine the actual active Observability policy candidate from the generated scan and review artifacts.
-3. Preserve the v02 evidence product and hash while final thresholds are evaluated.
-4. Freeze the final observability policy only after checking affected Actor rows, independent Clips, per-class impact, and reviewed visual cases.
-5. Convert accepted observability states into a formal Actor-observability product without exposing hidden Actor truth.
-6. Develop Step 7F short-history relative-motion features.
-7. Develop Step 7G road and wait-line features.
-8. Develop Step 7H Actor-role selection.
-9. Build `scene_fact_features_v0.1.jsonl`, then generate exactly one `scene_facts.jsonl` row per Keyframe.
-10. Add a unified `step7.build_scene_facts_v01` entry point and complete deterministic rebuild validation.
+Do not repeat Step 7 migration, policy selection, or freeze work. Do not reopen Step 7 unless Step 8 exposes a concrete dependency defect.
 
-The next session should not delete Shadow, review, check, diagnose, or specialized Profile files merely from their names. First inspect imports, outputs, and whether they support the unfinished policy decision. Cleanup should follow the active-chain decision.
+The next closed-loop batch should:
+
+1. Inventory Step 8 inputs from the frozen Keyframes, Meta-actions, Navigation, and Scene Facts.
+2. Freeze Step 8 schema, vocabulary, generator version, and rule version.
+3. Define the structured chain-of-causality contract.
+4. Keep model-input evidence and supervision-only evidence explicitly separated.
+5. Define conservative unknown states and explicit evidence references.
+6. Generate exactly one Step 8 row per Keyframe.
+7. Validate exact Anchor closure against `keyframe_contract_v0.1.json`.
+8. Add a unified production entry point, Summary, JSON Schema validation, deterministic hashes, and human-review tooling.
+9. Run the complete test suite, rebuild, compare artifacts, and clean temporary development files.
+10. Preserve frozen Step 7 bytes unless an explicitly approved upstream contract change is required.
 
 ## 13. Quick start for a new AI conversation
 
-Provide the new assistant these three files:
+This document is the only mandatory handoff file. After reading this file, a new assistant should be able to begin Step 8 without asking the user to repeat project history.
 
-- `AI_DATASET_DEVELOPMENT_HANDOFF.md`
-- `CLIP_DATA_FORMAT.md`
-- `SCENE_FACT_DESIGN.md`
+Optional specialist references:
 
-Then state that development should continue from the Step 7 state recorded here.
+- `CLIP_DATA_FORMAT.md`: authoritative raw Clip contract
+- `SCENE_FACT_DESIGN.md`: detailed frozen Step 7 technical contract
 
-The assistant should begin with a small read-only status request, without inspecting Git:
+Initial read-only checks:
 
 ```bash
 cd /home/lab/alpasim_ros2_ws/scripts/dataset_tools
+
 find step7 -maxdepth 1 -type f -print | sort
 find tests/step7 -maxdepth 1 -type f -print | sort
-PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest -q
-```
 
-It should also verify the two active Step 7E data baselines:
+PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 \
+  python3 -m pytest -q
 
-```bash
 sha256sum \
-  "$ALPASIM_DATA_ROOT/annotations/v0.1-draft/intermediate/actor_observability_v0.1.jsonl" \
-  "$ALPASIM_DATA_ROOT/annotations/v0.1-draft/step7e_geometric_occlusion_evidence_v02.jsonl"
+  "$ALPASIM_DATA_ROOT/annotations/v0.1-draft/scene_facts.jsonl"
 ```
 
-Expected hashes:
+Expected final Step 7 SHA-256:
 
 ```text
-ed7204a75dadc0194720cf6512083e8997fe8aeb60afde555c5ebed37b1c4b70
-635a96ead83d301173461304ee1c946e9370e829404ba5a0e1518a8ce75e7724
+735203f9ddf3b9f49e892edbb185936caa9db1cd46cbfcdd1b9e0f685958e2b5
 ```
 
-After those checks, continue directly with the Immediate next actions above. Do not rediscover Steps 1 through 6 unless a later code change requires it.
+After these checks, continue directly with Step 8. Do not rediscover Steps 1 through 7 unless a new failure demonstrates a specific dependency problem.

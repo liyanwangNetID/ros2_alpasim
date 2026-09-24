@@ -1,37 +1,39 @@
-# Step 7 Scene-Fact Generator Design and Development State
+# Step 7 Scene-Fact Generator Design and Frozen Contract
 
-**Status:** Active development through Step 7E; final Scene Facts are not yet generated  
+**Document status:** Updated to the frozen Step 7 codebase on 2026-09-24  
+**Status:** `PASS / FROZEN`  
 **Target dataset:** Current AlpaSim recorded Clip dataset  
 **Formal schema:** `schemas/scene_fact_schema_v0.1-draft.json`  
-**Planned final artifact:** `annotations/v0.1-draft/scene_facts.jsonl`
+**Final artifact:** `annotations/v0.1-draft/scene_facts.jsonl`  
+**Final SHA-256:** `735203f9ddf3b9f49e892edbb185936caa9db1cd46cbfcdd1b9e0f685958e2b5`
 
 ## 1. Purpose
 
-Step 7 generates structured Scene Facts for every selected Keyframe. It describes the scene at the Anchor without using future execution information.
+Step 7 generates exactly one structured Scene-Fact record for every selected Keyframe. Step 7 describes the scene at the Anchor without using future execution information.
 
-Planned facts include:
+Final facts include:
 
-- road context
-- intersection and wait-line proximity
-- observable lead vehicle
-- observable nearby left and right vehicles
+- Road Context
+- intersection, Stop-line, and Yield-line proximity
+- bounded observable Lead, Left, and Right Actor lists
 - relative position and distance
 - short-history relative motion
-- component quality and explicit reasons
+- per-Actor and record-level quality states and reasons
 
-Step 7 does not generate natural-language reasoning.
+Step 7 does not generate structured causality or natural-language reasoning. Structured causality begins in Step 8. Natural-language reasoning begins in Step 9.
 
 ## 2. Anchor contract
 
-Step 7 operates on `annotations/v0.1-draft/keyframes.jsonl` and validates `manifests/keyframe_contract_v0.1.json` in active formal exporters.
+Step 7 operates on `annotations/v0.1-draft/keyframes.jsonl` and validates the Keyframe contract.
 
-Final requirement:
+Final closure:
 
 ```text
-Scene-Fact Anchor IDs equal Keyframe Anchor IDs
+Scene-Fact Anchor IDs = Keyframe Anchor IDs
+Scene-Fact row count = Keyframe row count = 3500
 ```
 
-Every Keyframe must eventually produce exactly one final Scene-Fact record. Missing evidence produces conservative `unknown` values with reasons, not a missing row.
+Every Keyframe produces exactly one final Scene-Fact row. Missing or incomplete evidence produces conservative quality states and explicit reasons, not a missing row.
 
 ## 3. Allowed and forbidden inputs
 
@@ -39,8 +41,9 @@ Every Keyframe must eventually produce exactly one final Scene-Fact record. Miss
 
 - Keyframes and Keyframe contract
 - camera calibration and timestamp indexes
-- selected camera images for review
+- synchronized camera images
 - Anchor-time Ego state
+- current Actor snapshots
 - current and past Actor snapshots at or before the Anchor
 - static VectorMap
 
@@ -53,13 +56,19 @@ Every Keyframe must eventually produce exactly one final Scene-Fact record. Miss
 - future Ego execution
 - Meta-action labels as scene evidence
 
-## 4. Time and history policy
+## 4. Time, history, and reference Ego speed
 
-Final facts describe `anchor_ns`. Current Ego and Actor data use exact-time preference or bounded lookup, and accepted timing error must be explicit.
+Final facts describe `anchor_ns`.
 
-A short Actor history window may use only snapshots with timestamps at or before the Anchor. It supports persistence and relative-motion stability but does not change the time represented by the final record.
+Formal current geometry requires exact Anchor-time Ego and Actor snapshots. Short-history features use only snapshots at or before the Anchor.
 
-Actor data should be loaded once per Clip and indexed rather than rescanned for every Keyframe.
+Actor selection uses a reference Ego speed equal to the maximum of:
+
+- recorded Ego speed
+- executed Ego-state speed when available
+- recent pose-derived speed
+
+Pose-derived speed uses the longest usable past-only history window, approximately 3.0 seconds down to two samples near Clip boundaries.
 
 ## 5. Coordinates and cameras
 
@@ -70,7 +79,7 @@ x positive: forward
 y positive: left
 ```
 
-The four cameras are:
+Cameras:
 
 ```text
 front_wide
@@ -79,124 +88,69 @@ cross_left
 cross_right
 ```
 
-Camera streams are synchronized by timestamps. Recorded F-theta intrinsics and `rig_to_camera` extrinsics must be used. A pinhole approximation is not permitted.
+Camera streams are synchronized by timestamps. Recorded F-theta intrinsics and `rig_to_camera` extrinsics are used. A pinhole approximation is not permitted.
 
-## 6. Current development state
+## 6. Production stages and entry points
 
-```text
-7A  Schema, vocabulary, design boundary       implemented baseline
-7B  Current Actor snapshot access             available through Step 2 reader
-7C  Ego-relative Actor geometry               implemented
-7D  F-theta projection                        implemented and tested
-7E  Observability and Actor occlusion         active, advanced but unfinished
-7F  Short-history relative motion             not production-complete
-7G  Road and wait-line facts                  not production-complete
-7H  Actor role selection                      not production-complete
-7I  Full feature profiling                    not complete
-7J  Threshold scan and manual review          partially represented by Step 7E tooling
-7K  Frozen Scene-Fact rules                   not complete
-7L  Unified production entry point            not complete
-7M  Full deterministic validation             not complete
+Unified production entry point:
+
+```bash
+python3 -u -m step7.build_step7
 ```
 
-All identified Step 7 Python code has been migrated into `scripts/dataset_tools/step7/`. Tests are under `scripts/dataset_tools/tests/step7/`. The migration preserved the complete test baseline and formal product hashes.
+Ordered stages:
+
+```text
+projection_evidence
+occlusion
+observability_policy
+history
+road_context
+actor_roles
+scene_features
+scene_facts
+```
+
+Selective rebuild of the final three stages:
+
+```bash
+python3 -u -m step7.build_step7 \
+  --from-stage actor_roles
+```
+
+The historical 7A through 7M development plan is complete. Current development must use the unified build rather than resume old standalone Step 7E exporters.
 
 ## 7. Implemented geometry stack
 
-The packaged Step 7 implementation includes:
+The frozen implementation includes:
 
-- Scene-Fact schema vocabulary
 - current Actor geometry
 - F-theta camera calibration and projection
-- Actor oriented 3D box construction
+- Actor oriented 3D boxes
 - adaptive projected edge sampling
-- FOV clipping
+- angular-FOV and near-plane clipping
 - projected hull geometry
 - box surface triangulation
 - front-facing and near-plane-clipped triangles
-- angular FOV diagnostics and subdivision
 - projected triangle raster cells
 - barycentric and perspective depth interpolation
 - Actor surface depth rasters
 - per-camera Actor depth rasters
 - multi-Actor Z-buffer competition
 - per-camera and multi-camera occlusion evidence
-- geometric observability aggregation
 - projection context for geometric candidates without sampled surfaces
+- reviewed geometric observability aggregation
+- short-history relative motion
+- VectorMap Road Context
+- deterministic Actor-list selection
+- final feature and Scene-Fact export
+- Draft 2020-12 JSON Schema validation
 
-The active v02 production dependency closure contains 50 Step 7 modules and depends externally only on shared path configuration and `step2.clip_reader`.
+## 8. Observability and occlusion boundary
 
-## 8. Actor Observability intermediate
+Simulator Actor truth is not automatically valid visual supervision. An Actor may enter final Scene Facts only after the frozen observability policy accepts the Actor.
 
-Formal intermediate product:
-
-```text
-annotations/v0.1-draft/intermediate/actor_observability_v0.1.jsonl
-```
-
-Current verified baseline:
-
-```text
-Actor rows: 151908
-Anchors with Actor rows: 3474
-candidate_visible: 86598
-not_visible: 65310
-SHA-256: ed7204a75dadc0194720cf6512083e8997fe8aeb60afde555c5ebed37b1c4b70
-```
-
-This product is one row per Actor identity, not one row per Keyframe. Repeated Anchor IDs are expected because one Anchor can contain many Actors.
-
-## 9. Geometric Occlusion evidence v02
-
-Production entry point:
-
-```bash
-python3 -m step7.export_step7e_geometric_occlusion_evidence_v02
-```
-
-Formal products:
-
-```text
-annotations/v0.1-draft/step7e_geometric_occlusion_evidence_v02.jsonl
-annotations/v0.1-draft/step7e_geometric_occlusion_evidence_v02.summary.json
-```
-
-Current verified baseline:
-
-```text
-Schema: step7e-geometric-occlusion-evidence-v02
-Actor rows: 151908
-Source Keyframes: 3500
-Anchors with Actor rows: 3474
-Anchors without Actor rows: 26
-Duplicate Anchor and Actor identities: 0
-candidate_without_sampled_surface: 56
-combined_evidence_available: 86542
-no_geometric_candidate: 65310
-Missing-surface projection contexts: 209
-SHA-256: 635a96ead83d301173461304ee1c946e9370e829404ba5a0e1518a8ce75e7724
-```
-
-All 26 rowless Anchors were explained by one exact current Actor snapshot with an empty Actor list.
-
-The v02 Writer records the Evidence output SHA-256. The v02 Exporter validates the Step 5 Keyframe contract and writes:
-
-- contract path and version
-- Keyframe SHA-256 and count
-- source Keyframe count
-- Anchors with and without Actor rows
-- rowless Anchor IDs
-- rowless snapshot evidence and reason counts
-- Actor evidence distributions
-- projection-context distributions
-
-The previous second-pass Summary regenerator and duplicate coverage-check scripts were removed because the normal exporter now generates the complete Summary.
-
-## 10. Observability policy boundary
-
-Simulator truth is not automatically visual supervision. An Actor may enter final Scene Facts only after a reviewed observability policy accepts it.
-
-Evidence considered includes:
+Evidence includes:
 
 - camera-frustum compatibility
 - valid F-theta projection
@@ -208,13 +162,7 @@ Evidence considered includes:
 - Actor-to-Actor occlusion
 - per-camera and multi-camera consistency
 
-Current geometric evidence statuses are not yet the final Scene-Fact observability vocabulary. Shadow scans, class summaries, failure attribution, baseline-visible impact, fragment guards, and visual review tools exist under `step7/`, but the final policy is not frozen.
-
-## 11. Occlusion boundary
-
-Step 7 v0.1 evaluates Actor-to-Actor occlusion using projected Actor box surfaces and a low-resolution software depth buffer.
-
-It does not evaluate:
+Step 7 evaluates Actor-to-Actor occlusion. Step 7 does not evaluate:
 
 - buildings
 - walls
@@ -224,29 +172,91 @@ It does not evaluate:
 - pixel-accurate instance masks
 - rendered depth
 
-Final quality metadata must continue to state that static occlusion is not evaluated. The output must not be described as strict pixel-level visibility ground truth.
+Final records state:
 
-## 12. Hidden-truth protection
-
-A hidden or rejected Actor must not appear in final supervision.
-
-Final Actor-role presence values:
-
-```text
-present
-not_present
-unknown
+```json
+"static_occlusion_evaluated": false
 ```
 
-- `present`: an accepted observable Actor was selected
-- `not_present`: evidence was sufficient and no accepted candidate was selected
-- `unknown`: observability, timing, map, projection, motion, or role evidence was insufficient
+The output must not be described as strict pixel-level visibility ground truth.
 
-A non-present or unknown role must not expose a rejected Actor's Track ID, class, distance, position, or motion.
+A camera-visible object may lack a usable Actor identity or valid Actor projection at the exact Anchor. Step 7 does not fabricate a Track ID or Actor state to compensate.
 
-## 13. Planned relative position, distance, and motion
+## 9. Actor eligibility
 
-Intermediate position categories:
+Eligible classes:
+
+```text
+automobile
+bus
+heavy_truck
+other_vehicle
+trailer
+train_or_tram_car
+rider
+person
+```
+
+Non-independent labels, including `protruding_object`, are excluded.
+
+An Actor must satisfy the frozen observability gate. History quality and lane matching contribute to quality and ranking evidence but do not substitute for observability.
+
+## 10. Final Actor lists
+
+```text
+lead_actors: maximum 4
+left_nearby_actors: maximum 6
+right_nearby_actors: maximum 6
+```
+
+One Actor may occur in only one list per Anchor. Each selected Actor has a deterministic `role_rank` beginning at 1.
+
+### Lead Actors
+
+A Lead candidate must be:
+
+- observable and eligible
+- ahead of Ego by more than 0.5 m
+- within the strict 2.5 m Lead lateral corridor
+- within the Lead forward horizon
+
+Lead forward horizon:
+
+```text
+max(20 m, reference Ego speed * 10 s)
+```
+
+There is no fixed maximum Lead distance.
+
+Lead rank follows longitudinal path order. The nearest path-relevant Actor is rank 1. Lane relation is supporting ranking evidence rather than a hard gate. A valid `unrelated` Actor in the strict Lead corridor may still be selected.
+
+`person` and `rider` may enter the Lead list when they occupy the strict forward corridor.
+
+### Left and Right Actors
+
+Side forward horizon:
+
+```text
+clamp(reference Ego speed * 5 s, 20 m, 120 m)
+```
+
+Rear horizon:
+
+```text
+clamp(reference Ego speed * 2 s, 15 m, 50 m)
+```
+
+Side lateral range:
+
+```text
+0.5 m < absolute lateral offset <= 12 m
+```
+
+For `person`, side forward range is additionally capped at 30 m. Lead-corridor persons retain the full Lead horizon.
+
+## 11. Relative position, distance, and motion
+
+Relative position:
 
 ```text
 front
@@ -261,12 +271,12 @@ overlapping
 unknown
 ```
 
-Final relative distance:
+Relative distance:
 
 ```text
-near
-medium
-far
+near: distance <= 10 m
+medium: 10 m < distance <= 30 m
+far: distance > 30 m
 unknown
 ```
 
@@ -289,23 +299,19 @@ stationary
 uncertain
 ```
 
-Thresholds remain unfrozen. Conflicting instantaneous and past-window evidence should become conservative `uncertain` unless a reviewed rule resolves the conflict.
-
-## 14. Planned Actor roles
-
-Step 7 v0.1 plans three roles:
+Frozen thresholds:
 
 ```text
-lead_vehicle
-left_nearby_vehicle
-right_nearby_vehicle
+stable distance-rate magnitude <= 0.5 m/s
+stationary Actor speed <= 0.5 m/s
+similar speed difference <= 1.0 m/s
 ```
 
-Selection must consider observability, Ego-local geometry, heading and road compatibility, distance, and relevance. Do not select a Lead Vehicle merely because it is the nearest Actor in front. Opposing and crossing traffic must not be mislabeled as lead traffic.
+Conflicting or insufficient evidence becomes conservative `uncertain` or produces an `unknown` quality status with reasons.
 
-## 15. Planned road facts
+## 12. Road facts
 
-Road context values:
+Road Context values:
 
 ```text
 lane_following
@@ -314,7 +320,7 @@ intersection
 unknown
 ```
 
-Planned proximity facts:
+Final proximity fields:
 
 ```text
 intersection_proximity
@@ -333,17 +339,24 @@ none
 unknown
 ```
 
-These are map-based structural facts unless visual projection of the corresponding map element is separately implemented and reviewed. Do not call them visually confirmed wait lines.
+These are conservative map-based structural facts. Wait-line type is not fully propagated into the final feature layer. A visible STOP sign is not automatically a camera-confirmed Stop-line fact.
 
-## 16. Quality policy
+## 13. Quality policy
 
-Quality states are `usable` and `unknown`. Each component records `quality_status` and `reasons`. Missing evidence produces explicit unknown fields, never fabricated facts.
+Quality states:
 
-Every final record also records that static occlusion is not evaluated.
+```text
+usable
+unknown
+```
 
-## 17. Planned final record
+Reasons record insufficient Actor history, unmatched lanes, unknown Ego Road Context, and related evidence limitations.
 
-Each final JSONL row will contain:
+Unknown or missing evidence must never be replaced with fabricated facts.
+
+## 14. Final record structure
+
+Each final JSONL row contains:
 
 ```text
 scene_fact_format_version
@@ -353,76 +366,185 @@ anchor_id
 clip_id
 anchor_ns
 road_context
-lead_vehicle
-left_nearby_vehicle
-right_nearby_vehicle
+actor_context
 quality
 ```
 
-A present Actor role must include at least one accepted camera. Non-present roles must not contain hidden Actor identity or state.
-
-## 18. Production outputs still missing
-
-The following are not yet available as formal production outputs:
+`actor_context` contains:
 
 ```text
+reference_ego_speed_mps
+forward_horizon_m
+side_forward_horizon_m
+rear_horizon_m
+lists
+lead_actors
+left_nearby_actors
+right_nearby_actors
+```
+
+Each selected Actor contains:
+
+```text
+role_rank
+track_id
+actor_class
+relative_position
+relative_distance
+relative_x_m
+relative_y_m
+distance_m
+distance_trend
+relative_speed_category
+actor_speed_mps
+ego_speed_mps
+observability_status
+visible_in_cameras
+quality_status
+reasons
+```
+
+List metadata contains candidate count, selected count, maximum count, and truncation status.
+
+The old single-role presence structure is obsolete and must not be reintroduced.
+
+## 15. Formal outputs
+
+```text
+annotations/v0.1-draft/intermediate/actor_role_selection_v0.1.jsonl
 annotations/v0.1-draft/intermediate/scene_fact_features_v0.1.jsonl
 annotations/v0.1-draft/scene_facts.jsonl
-reports/scene_fact_feature_summary_v0.1.json
-reports/scene_fact_generation_summary_v0.1.json
+annotations/v0.1-draft/step7h_actor_role_selection_summary_v01.json
+annotations/v0.1-draft/step7k_scene_fact_features_summary_v01.json
+annotations/v0.1-draft/step7l_scene_facts_summary_v01.json
+schemas/scene_fact_schema_v0.1-draft.json
 ```
 
-There is no unified `build_scene_facts_v01` production entry point yet.
+The historical Actor Observability and geometric occlusion products remain useful provenance, but the unified build and final artifacts are authoritative.
 
-## 19. Test baseline
-
-Latest complete regression:
+## 16. Frozen result
 
 ```text
-1038 passed, 7 subtests passed
+Scene-Fact rows: 3500
+Schema validation errors: 0
+Role conflicts: 0
+Road contexts:
+  intersection: 257
+  intersection_approach: 1016
+  lane_following: 2180
+  unknown: 47
+Quality:
+  usable: 2870
+  unknown: 630
+Selected Actors:
+  lead_actors: 3284
+  left_nearby_actors: 4722
+  right_nearby_actors: 5181
+Truncated Anchors:
+  lead_actors: 38
+  left_nearby_actors: 75
+  right_nearby_actors: 127
 ```
 
-Key formal hashes:
+Final Scene-Fact SHA-256:
 
 ```text
-Keyframes
-bb3cc755d537c0b8fa0c68aff457106ee00d583bff448bf737c2d286e0ccabf7
-
-Actor Observability
-ed7204a75dadc0194720cf6512083e8997fe8aeb60afde555c5ebed37b1c4b70
-
-Geometric Occlusion v02
-635a96ead83d301173461304ee1c946e9370e829404ba5a0e1518a8ce75e7724
+735203f9ddf3b9f49e892edbb185936caa9db1cd46cbfcdd1b9e0f685958e2b5
 ```
 
-## 20. Immediate next development work
+The final SHA-256 remained unchanged after code consolidation, compatibility-layer removal, and deterministic rebuild.
 
-Directory migration is complete. Do not repeat it.
+## 17. Human review
 
-The next closed-loop batch should:
+Random review:
 
-1. Inventory files inside `step7/` by actual role and imports.
-2. Identify production libraries and entry points versus active Shadow, review, specialized Profile, and obsolete one-off tools.
-3. Determine the current intended Observability policy candidate from existing scan and visual-review artifacts.
-4. Evaluate affected Actor rows, Clips, classes, and baseline-visible impact.
-5. Freeze the final Observability policy with regression tests and a versioned rule identifier.
-6. Generate a formal accepted-observability intermediate that cannot expose hidden Actor truth.
-7. Continue Step 7F relative-motion features, Step 7G road facts, and Step 7H Actor-role selection.
-8. Build complete Scene-Fact features and one final Scene-Fact row per Keyframe.
-9. Add a unified Step 7 production entry point.
-10. Rebuild deterministically and document final hashes and distributions.
+```bash
+python3 -u -m step7.review_scene_fact \
+  --force
+```
 
-Use larger closed-loop batches: implementation, one complete test suite, artifact comparison, cleanup, and final complete test. Split only if a failure requires diagnosis.
+Specific Anchor:
 
-Do not delete a Step 7 tool solely because its filename begins with `check`, `diagnose`, `inspect`, `profile`, `scan`, or `generate`. First determine whether it supports the still-unfinished Observability policy decision.
+```bash
+python3 -u -m step7.review_scene_fact \
+  --anchor-id test_clip_894_2057127617252000 \
+  --force
+```
 
-## 21. Known v0.1 limitations
+Overlay colors:
+
+```text
+Lead: red
+Left: yellow
+Right: green
+```
+
+Validated review-only alignment for `test_clip_894`:
+
+```text
+front_wide: -16 source-image pixels
+front_tele: -35 source-image pixels
+```
+
+All unconfigured Clips use zero offset. Review offsets do not alter formal evidence or final Scene-Fact outputs.
+
+Reusable all-Actor diagnostic:
+
+```text
+scripts/render_step7_all_actor_debug.py
+```
+
+## 18. Validation and deterministic rebuild
+
+Complete tests:
+
+```bash
+cd /home/lab/alpasim_ros2_ws/scripts/dataset_tools
+
+PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 \
+  python3 -m pytest -q
+```
+
+Selective deterministic rebuild:
+
+```bash
+python3 -u -m step7.build_step7 \
+  --from-stage actor_roles
+```
+
+Acceptance conditions:
+
+```text
+3500 final rows
+0 schema validation errors
+0 role conflicts
+final SHA-256 equals the frozen hash
+```
+
+The earlier `1038 passed, 7 subtests passed` count belongs to an active-development snapshot. Obsolete compatibility tests were removed during freeze cleanup, so the authoritative test condition is that the complete current suite passes.
+
+## 19. Known limitations
 
 - static-scene occlusion is not evaluated
-- no rendered depth or instance masks
-- no external segmentation or monocular-depth model
-- STOP and YIELD initially mean map proximity, not camera confirmation
-- geometry-based visibility remains conservative
-- final thresholds are not frozen
-- final Scene Facts remain structured labels, not reasoning text
-- other datasets are outside the current v0.1 scope
+- no rendered depth or pixel-accurate instance masks
+- some camera-visible objects lack usable Actor coverage at the exact Anchor
+- Stop-sign presence is not a dedicated visual fact
+- wait-line type is not fully propagated
+- opposing-traffic direction is not a dedicated final Actor field
+- review offsets are Clip-specific visualization corrections
+- final Scene Facts are structured labels, not causality or reasoning text
+
+## 20. Freeze rule and Step 8 interface
+
+Step 7 is frozen. Do not change the formal schema, selection rules, thresholds, final bytes, or production modules while beginning Step 8 unless a concrete Step 8 dependency defect is identified and the change is explicitly approved.
+
+Step 8 may rely on:
+
+- exactly 3500 Scene-Fact rows
+- exact Anchor identity matching with Keyframes
+- stable Road Context vocabulary
+- stable Actor-list keys and ranks
+- explicit quality and reasons
+- the frozen final SHA-256
+
+Step 8 must not infer hidden Actors or repair upstream coverage by fabricating Scene Facts.
