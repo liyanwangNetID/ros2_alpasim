@@ -3,7 +3,7 @@ from __future__ import annotations
 import math
 from step2.coordinate_utils import Point2D, Pose2D, yaw_to_quaternion
 from step2.vector_map_reader import VectorMapReader
-from step7.road_context import RoadFeatureMapContext, compute_ego_and_actor_road_features, match_point_to_road
+from step7.road_context import RoadFeatureMapContext, classify_lane_direction_relation, compute_ego_and_actor_road_features, match_point_to_road
 from step7.road_context import summarize_road_feature_rows
 
 def poly(points):
@@ -41,6 +41,7 @@ def test_ego_actor_relation_and_order():
     ego, rows = compute_ego_and_actor_road_features(context=context, ego_pose=Pose2D(2, 0, 0), actors=(actor(),))
     assert ego.lane_id == 'A'
     assert rows[0][3] == 'same'
+    assert rows[0][4] == 'same_direction'
 
 def test_unmatched_is_explicit():
     context = RoadFeatureMapContext(raw_map=raw_map())
@@ -49,5 +50,32 @@ def test_unmatched_is_explicit():
     assert result.lane_id is None
 
 def test_summary_counts_statuses_and_relations():
-    r = summarize_road_feature_rows(keyframes=({'anchor_id': 'a'},), ego_rows=({'anchor_id': 'a', 'lane_match_status': 'matched', 'has_intersection_evidence': True},), actor_rows=({'anchor_id': 'a', 'track_id': '1', 'lane_match_status': 'matched', 'ego_lane_relation': 'same', 'has_intersection_evidence': False},))
+    r = summarize_road_feature_rows(keyframes=({'anchor_id': 'a'},), ego_rows=({'anchor_id': 'a', 'lane_match_status': 'matched', 'has_intersection_evidence': True},), actor_rows=({'anchor_id': 'a', 'track_id': '1', 'lane_match_status': 'matched', 'ego_lane_relation': 'same', 'lane_direction_relation': 'same_direction', 'has_intersection_evidence': False},))
     assert r['keyframe_count'] == 1 and r['actor_ego_lane_relation_counts'] == {'same': 1}
+    assert r['actor_lane_direction_relation_counts'] == {'same_direction': 1}
+
+def test_lane_direction_relation_classifies_parallel_opposing_and_crossing():
+    context = RoadFeatureMapContext(raw_map=raw_map())
+    ego = match_point_to_road(context=context, point=Point2D(2, 0))
+    same = match_point_to_road(context=context, point=Point2D(6, 0))
+    assert classify_lane_direction_relation(ego, same) == 'same_direction'
+    opposing = type(same)(
+        same.status, same.lane_id, same.centerline_distance_m,
+        same.centerline_arc_length_m, same.lane_length_m,
+        same.inside_lane_polygon, same.heading_error_rad,
+        math.pi, same.has_wait_line, same.wait_line_ids,
+        same.nearest_wait_line_id, same.nearest_wait_line_type,
+        same.nearest_wait_line_distance_m, same.nearest_wait_line_is_implicit,
+        same.has_intersection_evidence, same.intersection_evidence,
+    )
+    crossing = type(same)(
+        same.status, same.lane_id, same.centerline_distance_m,
+        same.centerline_arc_length_m, same.lane_length_m,
+        same.inside_lane_polygon, same.heading_error_rad,
+        math.pi / 2.0, same.has_wait_line, same.wait_line_ids,
+        same.nearest_wait_line_id, same.nearest_wait_line_type,
+        same.nearest_wait_line_distance_m, same.nearest_wait_line_is_implicit,
+        same.has_intersection_evidence, same.intersection_evidence,
+    )
+    assert classify_lane_direction_relation(ego, opposing) == 'opposing'
+    assert classify_lane_direction_relation(ego, crossing) == 'unknown'

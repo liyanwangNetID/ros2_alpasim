@@ -257,7 +257,7 @@ def align_review_calibration(calibration, *, clip_id):
 
 
 def review_box_color(label):
-    prefix = str(label).split("1", 1)[0].split("2", 1)[0].split("3", 1)[0]
+    prefix = str(label).split(" ", 1)[0].rstrip("0123456789")
     return REVIEW_BOX_COLORS.get(prefix, (0, 0, 255))
 
 

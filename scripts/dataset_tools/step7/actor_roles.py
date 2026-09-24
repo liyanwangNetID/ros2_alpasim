@@ -87,6 +87,7 @@ def _role_record(candidate, role, rank):
         "geometric_region": str(geometry["geometric_region"]),
         "ego_lane_relation": str(road["ego_lane_relation"]),
         "lane_match_status": str(road["lane_match_status"]),
+        "lane_direction_relation": str(road.get("lane_direction_relation", "unknown")),
         "history_status": str(history["history_status"]),
         "mean_distance_rate_mps": history["mean_distance_rate_mps"],
         "visibility_policy_status": str(candidate.visibility["shadow_status"]),

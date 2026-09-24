@@ -10,6 +10,9 @@ from step2.vector_map_reader import NearbyLane, VectorMapReader, point_in_polygo
 from collections import Counter
 LANE_SEARCH_RADIUS_M = 6.0
 EGO_MAX_HEADING_ERROR_RAD = math.radians(70.0)
+LANE_DIRECTION_PARALLEL_MAX_ERROR_RAD = math.radians(45.0)
+LANE_DIRECTION_OPPOSING_MIN_ERROR_RAD = math.radians(135.0)
+LANE_DIRECTION_RELATIONS = frozenset({'same_direction', 'opposing', 'unknown'})
 SPATIAL_CELL_SIZE_M = 20.0
 
 @dataclass(frozen=True, slots=True)
@@ -21,6 +24,7 @@ class RoadLaneMatch:
     lane_length_m: float | None
     inside_lane_polygon: bool | None
     heading_error_rad: float | None
+    lane_heading_rad: float | None
     has_wait_line: bool | None
     wait_line_ids: tuple[str, ...]
     nearest_wait_line_id: str | None
@@ -116,7 +120,7 @@ def _wait_line_points(item: Mapping[str, Any]) -> tuple[Point2D, ...]:
 def match_point_to_road(*, context: RoadFeatureMapContext, point: Point2D, yaw_rad: float | None=None, maximum_heading_error_rad: float | None=None, radius_m: float=LANE_SEARCH_RADIUS_M) -> RoadLaneMatch:
     candidates = context.find_nearby_lanes(point, radius_m=radius_m, yaw_rad=yaw_rad, maximum_heading_error_rad=maximum_heading_error_rad, limit=1)
     if not candidates:
-        return RoadLaneMatch('unmatched', None, None, None, None, None, None, None, (), None, None, None, None, None, ())
+        return RoadLaneMatch('unmatched', None, None, None, None, None, None, None, None, (), None, None, None, None, None, ())
     candidate = candidates[0]
     lane = context.vector_map.require_lane(candidate.lane_id)
     available = tuple((wait_id for wait_id in lane.wait_line_ids if wait_id in context.wait_lines_by_id))
@@ -135,9 +139,21 @@ def match_point_to_road(*, context: RoadFeatureMapContext, point: Point2D, yaw_r
     if len(context.vector_map.valid_related_lane_ids(lane.lane_id, 'predecessor')) > 1:
         evidence.append('multiple_predecessors')
     nearest_item = None if nearest is None else nearest[1]
-    return RoadLaneMatch('matched', lane.lane_id, candidate.distance_m, candidate.projection.arc_length_m, lane.length_m, candidate.inside_polygon, candidate.heading_error_rad, bool(available), available, None if nearest_item is None else str(nearest_item['id']), None if nearest_item is None else str(nearest_item.get('wait_line_type', 'UNKNOWN')), None if nearest is None else nearest[0][0], None if nearest_item is None else bool(nearest_item.get('is_implicit', False)), bool(evidence), tuple(evidence))
+    return RoadLaneMatch('matched', lane.lane_id, candidate.distance_m, candidate.projection.arc_length_m, lane.length_m, candidate.inside_polygon, candidate.heading_error_rad, candidate.projection.heading_rad, bool(available), available, None if nearest_item is None else str(nearest_item['id']), None if nearest_item is None else str(nearest_item.get('wait_line_type', 'UNKNOWN')), None if nearest is None else nearest[0][0], None if nearest_item is None else bool(nearest_item.get('is_implicit', False)), bool(evidence), tuple(evidence))
 
-def compute_ego_and_actor_road_features(*, context: RoadFeatureMapContext, ego_pose: Pose2D, actors: Sequence[Mapping[str, Any]]) -> tuple[RoadLaneMatch, tuple[tuple[str, str, RoadLaneMatch, str], ...]]:
+def classify_lane_direction_relation(ego: RoadLaneMatch, actor: RoadLaneMatch) -> str:
+    if ego.status != 'matched' or actor.status != 'matched':
+        return 'unknown'
+    if ego.lane_heading_rad is None or actor.lane_heading_rad is None:
+        return 'unknown'
+    error = abs(normalize_angle(float(actor.lane_heading_rad) - float(ego.lane_heading_rad)))
+    if error <= LANE_DIRECTION_PARALLEL_MAX_ERROR_RAD:
+        return 'same_direction'
+    if error >= LANE_DIRECTION_OPPOSING_MIN_ERROR_RAD:
+        return 'opposing'
+    return 'unknown'
+
+def compute_ego_and_actor_road_features(*, context: RoadFeatureMapContext, ego_pose: Pose2D, actors: Sequence[Mapping[str, Any]]) -> tuple[RoadLaneMatch, tuple[tuple[str, str, RoadLaneMatch, str, str], ...]]:
     ego = match_point_to_road(context=context, point=Point2D(ego_pose.x, ego_pose.y), yaw_rad=ego_pose.yaw, maximum_heading_error_rad=EGO_MAX_HEADING_ERROR_RAD)
     rows = []
     seen = set()
@@ -150,7 +166,10 @@ def compute_ego_and_actor_road_features(*, context: RoadFeatureMapContext, ego_p
         pose = pose2d_from_pose_mapping(actor['pose'])
         match = match_point_to_road(context=context, point=Point2D(pose.x, pose.y))
         relation = 'unknown' if ego.lane_id is None or match.lane_id is None else context.vector_map.relation(ego.lane_id, match.lane_id)
-        rows.append((track_id, label, match, relation))
+        direction_relation = classify_lane_direction_relation(ego, match)
+        if direction_relation not in LANE_DIRECTION_RELATIONS:
+            raise RuntimeError('unexpected lane-direction relation')
+        rows.append((track_id, label, match, relation, direction_relation))
     return (ego, tuple(sorted(rows, key=lambda item: item[0])))
 
 def summarize_road_feature_rows(*, keyframes, actor_rows, ego_rows):
@@ -162,4 +181,4 @@ def summarize_road_feature_rows(*, keyframes, actor_rows, ego_rows):
     actor_ids = [(str(x['anchor_id']), str(x['track_id'])) for x in actor_rows]
     if len(actor_ids) != len(set(actor_ids)):
         raise ValueError('Actor road identities must be unique')
-    return {'schema_version': 'step7g-road-features-summary-v01', 'keyframe_count': len(anchors), 'ego_row_count': len(ego_rows), 'actor_row_count': len(actor_rows), 'ego_match_status_counts': dict(sorted(Counter((x['lane_match_status'] for x in ego_rows)).items())), 'actor_match_status_counts': dict(sorted(Counter((x['lane_match_status'] for x in actor_rows)).items())), 'actor_ego_lane_relation_counts': dict(sorted(Counter((x['ego_lane_relation'] for x in actor_rows)).items())), 'ego_intersection_evidence_count': sum((bool(x['has_intersection_evidence']) for x in ego_rows)), 'actor_intersection_evidence_count': sum((bool(x['has_intersection_evidence']) for x in actor_rows))}
+    return {'schema_version': 'step7g-road-features-summary-v02', 'keyframe_count': len(anchors), 'ego_row_count': len(ego_rows), 'actor_row_count': len(actor_rows), 'ego_match_status_counts': dict(sorted(Counter((x['lane_match_status'] for x in ego_rows)).items())), 'actor_match_status_counts': dict(sorted(Counter((x['lane_match_status'] for x in actor_rows)).items())), 'actor_ego_lane_relation_counts': dict(sorted(Counter((x['ego_lane_relation'] for x in actor_rows)).items())), 'actor_lane_direction_relation_counts': dict(sorted(Counter((x.get('lane_direction_relation', 'unknown') for x in actor_rows)).items())), 'ego_intersection_evidence_count': sum((bool(x['has_intersection_evidence']) for x in ego_rows)), 'actor_intersection_evidence_count': sum((bool(x['has_intersection_evidence']) for x in actor_rows))}

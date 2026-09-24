@@ -23,3 +23,10 @@ def test_unknown_anchor_is_rejected():
 def test_clip_specific_review_offset():
     assert target.review_principal_point_y_offset("test_clip_894", "front_wide") == -16.0
     assert target.review_principal_point_y_offset("test_clip_001", "front_wide") == 0.0
+
+def test_review_colors_cover_all_role_ranks():
+    assert target.review_box_color("LEAD4 track 1") == (0, 0, 255)
+    assert target.review_box_color("LEFT3 track 1") == (0, 255, 255)
+    assert target.review_box_color("LEFT4 track 1") == (0, 255, 255)
+    assert target.review_box_color("LEFT6 track 1") == (0, 255, 255)
+    assert target.review_box_color("RIGHT6 track 1") == (0, 255, 0)

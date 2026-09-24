@@ -26,6 +26,7 @@ RELATIVE_POSITION_REGIONS = frozenset({'front', 'front_left', 'front_right', 'le
 RELATIVE_DISTANCE_CATEGORIES = frozenset({'near', 'medium', 'far', 'unknown'})
 DISTANCE_TREND_CATEGORIES = frozenset({'approaching', 'receding', 'stable_distance', 'uncertain'})
 RELATIVE_SPEED_CATEGORIES = frozenset({'slower_than_ego', 'similar_to_ego', 'faster_than_ego', 'stationary', 'uncertain'})
+LANE_DIRECTION_RELATIONS = frozenset({'same_direction', 'opposing', 'unknown'})
 QUALITY_STATUSES = frozenset({'usable', 'unknown'})
 FORBIDDEN_FUTURE_INPUTS = ('actors/future.jsonl', 'ego/ground_truth_future.jsonl', 'ego/complete_recording_ground_truth.json', 'ego/planner_output.jsonl')
 ALLOWED_CURRENT_OR_PAST_INPUTS = ('keyframes.jsonl', 'ego/ego_state.jsonl', 'actors/current.jsonl', 'calibration/*.json', 'cameras/*/timestamps.jsonl', 'map/vector_map.json')
@@ -234,6 +235,7 @@ def assemble_selected_actor_feature(*, role, selected_role, current_geometry):
         "observability_status": "candidate_visible", "visibility_policy_status": str(selected_role["visibility_policy_status"]),
         "history_status": history_status, "lane_match_status": str(selected_role["lane_match_status"]),
         "ego_lane_relation": str(selected_role["ego_lane_relation"]),
+        "lane_direction_relation": str(selected_role.get("lane_direction_relation", "unknown")),
     }
 
 
@@ -304,6 +306,7 @@ def _final_actor(actor, cameras):
     return {
         "role_rank": int(actor["role_rank"]), "track_id": str(actor["track_id"]), "actor_class": str(actor["label_class"]),
         "relative_position": str(actor["relative_position"]), "relative_distance": str(actor["relative_distance"]),
+        "lane_direction_relation": str(actor["lane_direction_relation"]),
         "relative_x_m": float(actor["relative_x_m"]), "relative_y_m": float(actor["relative_y_m"]), "distance_m": float(actor["distance_m"]),
         "distance_trend": str(actor["distance_trend"]), "relative_speed_category": str(actor["relative_speed"]),
         "actor_speed_mps": float(actor["actor_speed_mps"]), "ego_speed_mps": float(actor["ego_speed_mps"]),

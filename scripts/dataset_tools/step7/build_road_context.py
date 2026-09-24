@@ -137,7 +137,7 @@ def main():
             }
             ego_file.write(compact(ego_row))
             ego_rows.append(ego_row)
-            for track_id, label, match, relation in actor_matches:
+            for track_id, label, match, relation, direction_relation in actor_matches:
                 row = {
                     "schema_version": "step7g-actor-road-features-v01",
                     "anchor_id": anchor_id,
@@ -148,6 +148,7 @@ def main():
                     "lane_match_status": match.status,
                     "ego_lane_id": ego_match.lane_id,
                     "ego_lane_relation": relation,
+                    "lane_direction_relation": direction_relation,
                     **{
                         key: value
                         for key, value in match.to_dict().items()
@@ -201,6 +202,7 @@ def main():
     print("ego match statuses:", report["ego_match_status_counts"])
     print("actor match statuses:", report["actor_match_status_counts"])
     print("actor/ego lane relations:", report["actor_ego_lane_relation_counts"])
+    print("actor lane directions:", report["actor_lane_direction_relation_counts"])
     print("actor sha256:", report["actor_output_sha256"])
     print("ego sha256:", report["ego_output_sha256"])
     print("elapsed:", duration_text(report["elapsed_seconds"]))

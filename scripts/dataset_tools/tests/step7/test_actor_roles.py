@@ -10,7 +10,7 @@ def candidate(track, x, y, relation="unknown", visible="shadow_visible", label="
         geometry={"relative_x_m": x, "relative_y_m": y, "planar_distance_m": (x*x+y*y)**0.5, "geometric_region": "front", "actor_speed_mps": actor_speed, "ego_speed_mps": ego_speed, "relative_longitudinal_speed_mps": actor_speed-ego_speed},
         visibility={"shadow_status": visible, "winning_cell_count": 3},
         history={"history_status": "usable", "mean_distance_rate_mps": -1.0},
-        road={"ego_lane_relation": relation, "lane_match_status": "matched"},
+        road={"ego_lane_relation": relation, "lane_match_status": "matched", "lane_direction_relation": "same_direction"},
     )
 
 
@@ -56,3 +56,16 @@ def test_summary_rejects_cross_list_duplicates():
     roles = {"lead_actors": [actor], "left_nearby_actors": [actor], "right_nearby_actors": [], "selection_context": {"lists": {key: {"truncated": False} for key in ("lead_actors", "left_nearby_actors", "right_nearby_actors")}}}
     with pytest.raises(ValueError, match="multiple"):
         summarize_actor_role_rows(keyframes=({"anchor_id": "a"},), rows=({"anchor_id": "a", "roles": roles},))
+
+def test_role_record_propagates_lane_direction_relation():
+    value = candidate("left", 2, 3)
+    value = ActorRoleCandidate(
+        track_id=value.track_id,
+        label_class=value.label_class,
+        geometry=value.geometry,
+        visibility=value.visibility,
+        history=value.history,
+        road={**value.road, "lane_direction_relation": "opposing"},
+    )
+    roles = select_actor_roles(candidates=(value,))
+    assert roles["left_nearby_actors"][0]["lane_direction_relation"] == "opposing"
