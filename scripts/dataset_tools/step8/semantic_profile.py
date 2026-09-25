@@ -16,6 +16,11 @@ def sorted_numeric(counter: Counter[str]) -> dict[str, int]:
     return dict(sorted(counter.items(), key=lambda item: int(item[0])))
 
 
+def append_unique_example(examples: list[str], anchor_id: str, limit: int) -> None:
+    if anchor_id not in examples and len(examples) < limit:
+        examples.append(anchor_id)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data-root", type=Path, default=None)
@@ -61,14 +66,19 @@ def main() -> int:
             rule_counts[rule_id] += 1
             has_supported = has_supported or link["confidence"] == "supported"
             rule_examples.setdefault(rule_id, [])
-            if len(rule_examples[rule_id]) < 10:
-                rule_examples[rule_id].append(joined_row.anchor_id)
-            if link["relation"] == "conflicts_with" and len(conflict_examples) < 50:
-                conflict_examples.append(joined_row.anchor_id)
+            append_unique_example(
+                rule_examples[rule_id], joined_row.anchor_id, 10
+            )
+            if link["relation"] == "conflicts_with":
+                append_unique_example(
+                    conflict_examples, joined_row.anchor_id, 50
+                )
         for reason in record["quality"]["reasons"]:
             reason_counts[reason] += 1
-        if not has_supported and len(no_supported_examples) < 50:
-            no_supported_examples.append(joined_row.anchor_id)
+        if not has_supported:
+            append_unique_example(
+                no_supported_examples, joined_row.anchor_id, 50
+            )
         if index % 500 == 0 or index == total:
             print(
                 f"[Step 8 profile] {index}/{total} | "

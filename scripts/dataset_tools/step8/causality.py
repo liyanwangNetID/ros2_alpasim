@@ -14,9 +14,7 @@ from .contract import (
 _RELATION_ORDER = {
     "aligns_with": 0,
     "supports": 1,
-    "constrains": 2,
-    "conflicts_with": 3,
-    "insufficient_evidence": 4,
+    "insufficient_evidence": 2,
 }
 
 
@@ -136,7 +134,6 @@ def _side_relation(actor: Mapping[str, Any], lateral: str, side: str) -> tuple[s
 def build_structured_causality(joined: JoinedAnchor) -> dict[str, Any]:
     navigation = _mapping(joined.navigation.get("navigation"))
     scene = joined.scene_fact
-    road = _mapping(scene.get("road_context"))
     actor_context = _mapping(scene.get("actor_context"))
     meta = joined.meta_action
     lateral_data = _mapping(meta.get("lateral"))
@@ -176,7 +173,6 @@ def build_structured_causality(joined: JoinedAnchor) -> dict[str, Any]:
     )
     links.append(_link("link_navigation_lateral", "navigation_intent", "decision_lateral", relation, confidence, rule_id, reasons))
 
-    actor_node_ids: list[str] = []
     list_specs = (
         ("lead_actors", "lead"),
         ("left_nearby_actors", "left"),
@@ -198,7 +194,6 @@ def build_structured_causality(joined: JoinedAnchor) -> dict[str, Any]:
             )
             if relation_data is None:
                 continue
-            actor_node_ids.append(node_id)
             nodes.append(
                 _node(
                     node_id,

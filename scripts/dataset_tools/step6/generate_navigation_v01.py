@@ -21,10 +21,10 @@ from project_paths import (
     REPORT_ROOT,
 )
 
-RULE_VERSION = "navigation_rules_v0.1.4"
+RULE_VERSION = "navigation_rules_v0.1.5"
 
 
-GENERATOR_VERSION = "0.1.4"
+GENERATOR_VERSION = "0.1.5"
 
 
 OUTPUT_FORMAT_VERSION = "0.1-draft"
@@ -112,6 +112,27 @@ def classify_navigation(
     branch = context.get("first_observed_branch")
 
     if branch is None:
+        start_heading = route_geometry.get("route_start_heading_rad")
+        final_x = route_geometry.get("final_local_x_m")
+        final_y = route_geometry.get("final_local_y_m")
+        final_bearing = None
+        if (
+            isinstance(final_x, (int, float))
+            and isinstance(final_y, (int, float))
+            and math.hypot(float(final_x), float(final_y)) > 1e-6
+        ):
+            final_bearing = math.atan2(float(final_y), float(final_x))
+        strong_right_route = (
+            isinstance(start_heading, (int, float))
+            and float(start_heading) <= math.radians(-30.0)
+            and isinstance(final_bearing, (int, float))
+            and float(final_bearing) <= math.radians(-30.0)
+        )
+        if upcoming_intersection and strong_right_route:
+            return _unknown(
+                "upcoming_intersection_without_observed_route_branch",
+                "strong_right_route_geometry_without_resolved_branch",
+            )
         return {
             "action": "straight",
             "text": "Continue straight through the upcoming intersection." if upcoming_intersection else "Continue along the road.",

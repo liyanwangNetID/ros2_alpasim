@@ -72,6 +72,14 @@ class NavigationRuleV012Tests(unittest.TestCase):
         self.assertEqual(classify_navigation(route(8.0), branch(first))['action'], 'unknown')
 
     def test_time_based_intersection_template(self):
-        self.assertIn('intersection', classify_navigation(route(), branch(intersection_distance=45.0, speed=5.0))['text'])
-        self.assertEqual(classify_navigation(route(), branch(intersection_distance=45.0, speed=2.0))['text'], 'Continue along the road.')
+        inside = classify_navigation(
+            route(), branch(intersection_distance=45.0, speed=5.0)
+        )
+        outside = classify_navigation(
+            route(), branch(intersection_distance=45.0, speed=2.0)
+        )
+        self.assertEqual(inside['action'], 'straight')
+        self.assertIn('intersection', inside['text'])
+        self.assertEqual(outside['action'], 'straight')
+        self.assertEqual(outside['text'], 'Continue along the road.')
 

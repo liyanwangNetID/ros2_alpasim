@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from natural_corridor_family_guard_v01 import (
+from step6.natural_corridor_family_guard_v01 import (
     DirectionFamilyObservation,
     direction_family,
     guard_from_observations,

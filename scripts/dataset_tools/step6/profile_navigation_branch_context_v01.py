@@ -33,7 +33,7 @@ from step4.natural_lane_corridor import (
     build_natural_lane_corridor,
     compare_actual_lane_sequence,
 )
-from natural_corridor_family_guard_v01 import (
+from step6.natural_corridor_family_guard_v01 import (
     FAMILY_GUARD_VERSION,
     evaluate_direction_family_guard,
 )

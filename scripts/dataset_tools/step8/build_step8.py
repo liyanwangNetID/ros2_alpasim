@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import json
 import os
+import sys
 import time
 from collections import Counter
 from pathlib import Path
@@ -302,7 +303,11 @@ def main() -> int:
     args = parser().parse_args()
     paths = Step8Paths.from_data_root(args.data_root)
     print("[Step 8] Validating frozen inputs", flush=True)
-    result = build(paths, force=args.force)
+    try:
+        result = build(paths, force=args.force)
+    except FileExistsError as error:
+        print(f"ERROR: {error}", file=sys.stderr, flush=True)
+        return 2
     summary = result["summary"]
     print("Step 8 Structured CoC export")
     print("records:", summary["record_count"])

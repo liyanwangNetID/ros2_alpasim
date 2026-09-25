@@ -1,11 +1,11 @@
 # Step 7 Scene-Fact Generator Design and Frozen Contract
 
-**Document status:** Updated to the frozen Step 7 codebase on 2026-09-24  
+**Document status:** Updated to the frozen Step 7 contract used by frozen Step 8 on 2026-09-25  
 **Status:** `PASS / FROZEN`  
 **Target dataset:** Current AlpaSim recorded Clip dataset  
 **Formal schema:** `schemas/scene_fact_schema_v0.1-draft.json`  
 **Final artifact:** `annotations/v0.1-draft/scene_facts.jsonl`  
-**Final SHA-256:** `735203f9ddf3b9f49e892edbb185936caa9db1cd46cbfcdd1b9e0f685958e2b5`
+**Final SHA-256:** `7b50f955058bbb159075b26a925bf5efc7aef15df189e11b649de63d8aa59fd8`
 
 ## 1. Purpose
 
@@ -400,6 +400,7 @@ actor_speed_mps
 ego_speed_mps
 observability_status
 visible_in_cameras
+lane_direction_relation
 quality_status
 reasons
 ```
@@ -449,7 +450,7 @@ Truncated Anchors:
 Final Scene-Fact SHA-256:
 
 ```text
-735203f9ddf3b9f49e892edbb185936caa9db1cd46cbfcdd1b9e0f685958e2b5
+7b50f955058bbb159075b26a925bf5efc7aef15df189e11b649de63d8aa59fd8
 ```
 
 The final SHA-256 remained unchanged after code consolidation, compatibility-layer removal, and deterministic rebuild.
@@ -491,7 +492,7 @@ All unconfigured Clips use zero offset. Review offsets do not alter formal evide
 Reusable all-Actor diagnostic:
 
 ```text
-scripts/render_step7_all_actor_debug.py
+scripts/dataset_tools/step7/render_all_actor_debug.py
 ```
 
 ## 18. Validation and deterministic rebuild
@@ -530,21 +531,29 @@ The earlier `1038 passed, 7 subtests passed` count belongs to an active-developm
 - some camera-visible objects lack usable Actor coverage at the exact Anchor
 - Stop-sign presence is not a dedicated visual fact
 - wait-line type is not fully propagated
-- opposing-traffic direction is not a dedicated final Actor field
+- `lane_direction_relation` is a final per-Actor field; lane matching may still be `unknown` when map evidence is insufficient
 - review offsets are Clip-specific visualization corrections
 - final Scene Facts are structured labels, not causality or reasoning text
 
-## 20. Freeze rule and Step 8 interface
+## 20. Freeze rule and frozen Step 8 interface
+Step 7 is frozen. Do not change the formal schema, selection rules, thresholds, final bytes, or production modules unless a concrete downstream dependency defect is identified and the change is explicitly approved.
 
-Step 7 is frozen. Do not change the formal schema, selection rules, thresholds, final bytes, or production modules while beginning Step 8 unless a concrete Step 8 dependency defect is identified and the change is explicitly approved.
-
-Step 8 may rely on:
-
+Frozen Step 8 relies on:
 - exactly 3500 Scene-Fact rows
 - exact Anchor identity matching with Keyframes
 - stable Road Context vocabulary
 - stable Actor-list keys and ranks
+- per-Actor `lane_direction_relation`
 - explicit quality and reasons
-- the frozen final SHA-256
+- frozen Scene-Fact SHA-256 `7b50f955058bbb159075b26a925bf5efc7aef15df189e11b649de63d8aa59fd8`
 
-Step 8 must not infer hidden Actors or repair upstream coverage by fabricating Scene Facts.
+Step 8 uses only usable near or medium Lead Actors for longitudinal support. Same-direction motor vehicles may support `decelerate` or `stop`. A front `person` or `rider` may support the response even when the matched lane region is opposing. Opposing motor vehicles are not treated as same-direction following constraints. Side Actors do not create lane-change causality without target-lane gap evidence.
+
+Step 8 omits unlinked Actor and Road Context nodes rather than copying all Scene Facts into the Structured CoC. It does not infer hidden Actors or repair upstream coverage by fabricating Scene Facts.
+
+The frozen Structured CoC SHA-256 is:
+```text
+c0c6491551b74abaa66cc2e53706b8f23e85280f00c387c1d260fd823a869703
+```
+
+Step 9 must consume the frozen Step 8 artifact and generate grounded short reasoning without modifying Step 7 semantics.

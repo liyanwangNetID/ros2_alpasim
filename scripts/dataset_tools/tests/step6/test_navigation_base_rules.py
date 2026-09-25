@@ -56,7 +56,7 @@ class NavigationRuleTests(unittest.TestCase):
         self.assertEqual(result["action"], "straight")
         self.assertEqual(result["text"], "Continue along the road.")
 
-    def test_no_branch_straight_intersection(self):
+    def test_no_branch_straight_intersection_remains_straight(self):
         result = classify_navigation(route(), branch(intersection_distance=20.0))
         self.assertEqual(result["action"], "straight")
         self.assertIn("intersection", result["text"])

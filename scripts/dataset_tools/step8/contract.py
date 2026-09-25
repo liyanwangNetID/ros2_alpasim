@@ -21,7 +21,7 @@ RULE_VERSION = "structured_causality_rules_v0.2"
 EXPECTED_SHA256 = {
     "keyframes": "bb3cc755d537c0b8fa0c68aff457106ee00d583bff448bf737c2d286e0ccabf7",
     "meta_actions": "a07aacf417829e11d2fe437f01318d509d2d5a007a196440f3d9be95110f5973",
-    "navigation": "d025699fcfff677e7929c9df13eb72023d8acd6b815d0fa80c604044c6b7bf90",
+    "navigation": "bf7d91b283ef3ef93f421d24cdb267d2cbcfa7c241ac20f56ba7dad5bcaf572d",
     "scene_facts": "7b50f955058bbb159075b26a925bf5efc7aef15df189e11b649de63d8aa59fd8",
 }
 

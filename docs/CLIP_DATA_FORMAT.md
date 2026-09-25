@@ -1,6 +1,6 @@
 # AlpaSim Recorded Clip Data Format
 
-**Document status:** Updated for the frozen Step 7 codebase on 2026-09-24  
+**Document status:** Updated for the frozen Step 8 codebase on 2026-09-25  
 **Scope:** Raw recorded Clip contract consumed by the dataset annotation tools.  
 **Recorder:** `src/alpasim_dataset_tools/alpasim_dataset_tools/data_batch_recorder.py`  
 **ROS 2 entry point:** `ros2 run alpasim_dataset_tools data_batch_recorder`  
@@ -211,7 +211,7 @@ A camera-visible object may occasionally lack a usable Actor identity or valid A
 - `route/map_route.jsonl`: map Route stream
 - `route/navigation_route_local.jsonl`: model-input Route in Ego-local coordinates
 
-Step 6 queries the latest Route available at or before the Anchor. The final model input exposes only coarse Navigation semantics and must not reveal precise future coordinates, timing, speed, or controls.
+Step 6 queries the latest Route available at or before the Anchor. The final model input exposes only coarse Navigation semantics and must not reveal precise future coordinates, timing, speed, or controls. Step 6 v0.1.5 conservatively emits `unknown` for a narrow unresolved-branch case with strong rightward Anchor-time Route geometry; future Ego execution and Meta-action are not generation inputs.
 
 ## 12. VectorMap
 
@@ -285,14 +285,18 @@ Frozen result:
 rows: 3500
 Schema validation errors: 0
 Role conflicts: 0
-SHA-256: 735203f9ddf3b9f49e892edbb185936caa9db1cd46cbfcdd1b9e0f685958e2b5
+SHA-256: 7b50f955058bbb159075b26a925bf5efc7aef15df189e11b649de63d8aa59fd8
 ```
 
 The earlier standalone Step 7E geometric evidence products are historical development artifacts. Current development must consume the unified frozen Step 7 outputs rather than resume old standalone exporters.
 
 ### Step 8
+Step 8 joins frozen Keyframes, Meta-actions, Navigation, and Scene Facts using exact Anchor identity. It validates frozen hashes and produces `annotations/v0.1-draft/structured_causality.jsonl`. Step 8 distinguishes model-input evidence from supervision-only evidence, records explicit evidence references, and never fabricates missing raw data.
 
-Step 8 may join frozen Keyframes, Meta-actions, Navigation, and Scene Facts using exact Anchor identity. Step 8 must distinguish model-input evidence from supervision-only evidence and must never fabricate missing raw data.
+Frozen Step 8 relations are `aligns_with`, `supports`, and `insufficient_evidence`. Only path-relevant Lead Actors participate in Actor support rules; Side Actors remain in Scene Facts unless target-lane causal evidence exists. Step 8 does not consume Actor future, Ego future, planner output, or complete-recording future data directly. Meta-action remains supervision, not model input.
+
+### Step 9
+Step 9 will generate short causal reasoning from the frozen Step 8 Structured CoC. Step 9 must remain grounded in Step 8 nodes, links, quality, and evidence references and must not invent raw observations.
 
 ## 14. Reader compatibility requirements
 
@@ -345,6 +349,12 @@ Frozen Step 7 raw-data consumers and geometry:
 ```text
 scripts/dataset_tools/step7/
 scripts/dataset_tools/tests/step7/
+```
+
+Frozen Step 8 causality tools:
+```text
+scripts/dataset_tools/step8/
+scripts/dataset_tools/tests/step8/
 ```
 
 Primary project handoff:

@@ -1,8 +1,8 @@
 # AlpaSim VLM Dataset Development Handoff
 
-**Document status:** Updated to the frozen Step 7 codebase on 2026-09-24  
+**Document status:** Updated to the frozen Step 8 codebase on 2026-09-25  
 **Audience:** A new AI assistant or developer continuing this repository.  
-**Purpose:** This is the primary, self-contained handoff. A new conversation should be able to continue directly with Step 8 after reading this file, without requiring additional project history from the user.
+**Purpose:** This is the primary, self-contained handoff. A new conversation should be able to continue directly with Step 9 after reading this file, without requiring additional project history from the user.
 
 ## 1. Project goal
 
@@ -114,7 +114,7 @@ Step 11  Dataset split
 Step 12  Audit and statistics
 ```
 
-Steps 1 through 7 are implemented. Step 7 is frozen. Steps 8 through 12 have not started.
+Steps 1 through 8 are implemented and frozen. Step 9 Reasoning is the next development step. Steps 10 through 12 have not started.
 
 ## 6. Current code organization
 
@@ -131,6 +131,8 @@ scripts/dataset_tools/step7/
 scripts/dataset_tools/tests/step1/
 ...
 scripts/dataset_tools/tests/step7/
+scripts/dataset_tools/step8/
+scripts/dataset_tools/tests/step8/
 ```
 
 The frozen Step 7 package contains:
@@ -160,7 +162,7 @@ scene_facts.py
 A reusable Step 7 diagnostic remains outside the package:
 
 ```text
-scripts/render_step7_all_actor_debug.py
+scripts/dataset_tools/step7/render_all_actor_debug.py
 ```
 
 ## 7. Steps 1 through 4
@@ -252,19 +254,15 @@ balanced_stable_lateral: 129
 The Keyframe contract records format, selector and rule versions, upstream Meta-action contract linkage, Candidate count, Event count, Keyframe count, Keyframe SHA-256, and the proportional quota policy.
 
 ## 9. Step 6: Navigation
-
 ### Status
-
-Complete and frozen.
+Complete and frozen after the Step 8 dependency audit.
 
 ### Production entry point
-
 ```bash
 python3 -m step6.build_navigation_v01 --force
 ```
 
 ### Production stages
-
 ```text
 step6.profile_navigation_branch_context_v01
 step6.profile_road_level_navigation_features_v01
@@ -272,10 +270,22 @@ step6.profile_navigation_route_features_v01
 step6.generate_navigation_v01
 ```
 
-The old Candidate-to-Final double stage was removed because there was no independent manual-review input. The formal generator writes `navigation.jsonl` directly while preserving prior final bytes.
+The formal generator validates `manifests/keyframe_contract_v0.1.json`, exact Anchor coverage, record count, and frozen Keyframe identity. Step 6 uses only Route data available at or before the Anchor, Anchor-time Ego state, and static VectorMap. Meta-action was used only for offline rule auditing and is never an input to Navigation generation.
+
+### Step 8 dependency correction
+Human review found an Anchor where the Route and map evidence did not resolve a branch, while the old classifier emitted a usable `straight` instruction. Step 6 v0.1.5 adds a narrow Anchor-time-only guard:
+
+```text
+upcoming intersection
++ no observed route branch
++ route start heading <= -30 degrees
++ final route-point bearing <= -30 degrees
+-> Navigation unknown
+```
+
+The guard does not emit `right`, because an unresolved branch cannot distinguish an intersection choice from a natural road curve. It conservatively changes only nine records from `straight` to `unknown` and does not use future Ego motion or Meta-action labels.
 
 ### Current production modules
-
 ```text
 step6/__init__.py
 step6/build_navigation_v01.py
@@ -286,26 +296,21 @@ step6/profile_navigation_route_features_v01.py
 step6/profile_road_level_navigation_features_v01.py
 ```
 
-`navigation_route_features_v01.py` remains independent because it is shared by three production modules. Old one-use Map Context and Road-level helpers were merged into their active profilers.
-
-### Contract validation
-
-`step6.generate_navigation_v01` validates `manifests/keyframe_contract_v0.1.json`, including Keyframe SHA-256, record count, unique Anchor IDs, and exact feature Anchor coverage. The Summary records the contract path, Keyframe SHA-256, Keyframe count, and coverage validity.
-
 ### Frozen result
-
 ```text
 Records: 3500
-straight: 2921
-unknown: 419
+Generator: 0.1.5
+Rule version: navigation_rules_v0.1.5
+straight: 2912
+unknown: 428
 right: 103
 left: 57
-usable: 3081
-unknown quality: 419
+usable: 3072
+unknown quality: 428
+new strong-right unresolved-branch guard hits: 9
 ```
 
 ### Frozen hashes
-
 ```text
 navigation_branch_context_v0.1.jsonl
   afcaf3ce2222c383fd457432ed1eb6ecc800c7a3d1c318f0ebd028ff93541aad
@@ -314,8 +319,10 @@ road_level_navigation_features_v0.1.jsonl
 navigation_route_features_v0.1.jsonl
   140c2613ec44e59c865d45dd6b99bada5f955ec0909f967f090c319e167c0475
 navigation.jsonl
-  d025699fcfff677e7929c9df13eb72023d8acd6b815d0fa80c604044c6b7bf90
+  bf7d91b283ef3ef93f421d24cdb267d2cbcfa7c241ac20f56ba7dad5bcaf572d
 ```
+
+The final Navigation output was rebuilt twice with identical bytes.
 
 ## 10. Step 7: Scene Facts
 
@@ -540,7 +547,7 @@ left_nearby_actors
 right_nearby_actors
 ```
 
-Each selected Actor contains rank, Track ID, class, relative geometry, distance and motion categories, Actor and Ego speeds, observability, visible cameras, quality, and reasons.
+Each selected Actor contains rank, Track ID, class, relative geometry, distance and motion categories, Actor and Ego speeds, `lane_direction_relation`, observability, visible cameras, quality, and reasons.
 
 ### Formal outputs
 
@@ -583,7 +590,7 @@ Truncated Anchors:
 Final Scene-Fact SHA-256:
 
 ```text
-735203f9ddf3b9f49e892edbb185936caa9db1cd46cbfcdd1b9e0f685958e2b5
+7b50f955058bbb159075b26a925bf5efc7aef15df189e11b649de63d8aa59fd8
 ```
 
 The final hash remained unchanged after Step 7 code consolidation, compatibility-layer removal, and deterministic rebuild.
@@ -620,11 +627,149 @@ Unconfigured Clips use zero offset. These corrections affect review visualizatio
 - Step 7 does not fabricate missing Actor state
 - STOP-sign presence is not a dedicated visual fact
 - wait-line type is not fully propagated
-- opposing-traffic direction is not a dedicated final Actor field
+- `lane_direction_relation` is present for selected Actors and supports downstream same-direction versus opposing-traffic handling
 - review alignment offsets are Clip-specific visual corrections
 - final Scene Facts are structured labels, not causality or reasoning text
 
-## 11. Test baseline and deterministic validation
+## 11. Step 8: Structured chain of causality
+### Status
+```text
+PASS / FROZEN
+```
+
+Step 8 produces exactly one deterministic Structured CoC row for each frozen Keyframe. It joins Keyframes, Meta-actions, Navigation, and Scene Facts by exact Anchor identity and validates all frozen input hashes before generation.
+
+### Production entry point
+```bash
+python3 -u -m step8.build_step8
+```
+
+Explicit rebuild:
+```bash
+python3 -u -m step8.build_step8 --force
+```
+
+### Frozen code structure
+```text
+step8/__init__.py
+step8/build_step8.py
+step8/causality.py
+step8/contract.py
+step8/review_causality.py
+step8/semantic_profile.py
+```
+
+`step8/inventory.py` was removed during freeze cleanup because `contract.py` now owns authoritative hash, coverage, identity, and Keyframe-contract validation.
+
+### Formal outputs
+```text
+annotations/v0.1-draft/structured_causality.jsonl
+schemas/structured_causality_schema_v0.1-draft.json
+reports/step8_structured_causality_summary_v01.json
+reports/step8_semantic_profile_v02.json
+manifests/structured_causality_contract_v0.1.json
+```
+
+### Structured CoC vocabulary
+Node types:
+```text
+navigation_intent
+longitudinal_decision
+lateral_decision
+actor_state
+```
+
+Relations:
+```text
+aligns_with
+supports
+insufficient_evidence
+```
+
+Confidence:
+```text
+supported
+weak
+unknown
+```
+
+The frozen design intentionally does not emit `causes`, `constrains`, or `conflicts_with`. Road Context remains available in Step 7 but is not copied into Step 8 unless a reliable causal rule exists.
+
+### Frozen rules
+```text
+navigation_lateral_alignment_v01
+navigation_lateral_evidence_insufficient_v01
+navigation_action_stage_uncertain_v01
+same_direction_lead_vehicle_supports_longitudinal_response_v01
+front_vulnerable_actor_supports_longitudinal_response_v01
+```
+
+Rule boundaries:
+- coarse Navigation may align with lateral supervision, but is never described as absolute causation
+- unknown Navigation or lateral supervision produces `insufficient_evidence`
+- an apparent Navigation/action mismatch is treated as execution-stage uncertainty, not as a conflict
+- only usable near or medium Lead Actors may support `decelerate` or `stop`
+- same-direction motor vehicles may support the longitudinal response
+- a front `person` or `rider` may support the response even when the matched lane region is opposing
+- opposing motor vehicles are not used as same-direction following constraints
+- Side Actors do not create lane-change causality without target-lane gap evidence
+- unlinked Actor and Road Context nodes are omitted
+
+### Quality policy
+```text
+usable
+partial
+unknown
+```
+
+Meta-action quality `unknown` makes the Step 8 record `unknown`. Otherwise, unknown source evidence or the absence of a supported link makes the record `partial`; records with usable sources and at least one supported link are `usable`.
+
+### Frozen result
+```text
+Records: 3500
+Quality:
+  usable: 2310
+  partial: 777
+  unknown: 413
+Relations:
+  aligns_with: 3005
+  insufficient_evidence: 495
+  supports: 298
+Rules:
+  navigation_lateral_alignment_v01: 3005
+  navigation_lateral_evidence_insufficient_v01: 475
+  navigation_action_stage_uncertain_v01: 20
+  same_direction_lead_vehicle_supports_longitudinal_response_v01: 288
+  front_vulnerable_actor_supports_longitudinal_response_v01: 10
+```
+
+Final Structured CoC SHA-256:
+```text
+c0c6491551b74abaa66cc2e53706b8f23e85280f00c387c1d260fd823a869703
+```
+
+The formal output, Summary, and Contract contain the same output hash. The Contract freezes the Navigation source hash `bf7d91b283ef3ef93f421d24cdb267d2cbcfa7c241ac20f56ba7dad5bcaf572d` and Scene-Fact source hash `7b50f955058bbb159075b26a925bf5efc7aef15df189e11b649de63d8aa59fd8`.
+
+### Validation and review
+- Draft 2020-12 Schema validation passes for all 3500 rows
+- Anchor IDs are unique and close exactly to Keyframes
+- Actor nodes are linked and no dangling links exist
+- default overwrite protection returns a concise error without traceback
+- deterministic rebuild preserves the formal SHA-256
+- Semantic Profile examples are unique and bounded
+- human review covered Navigation alignment, Navigation uncertainty, unknown quality propagation, same-direction Lead vehicles, and front vulnerable Actors
+
+Review command:
+```bash
+python3 -u -m step8.review_causality --anchor-id ANCHOR_ID
+```
+
+Semantic profile:
+```bash
+python3 -u -m step8.semantic_profile
+```
+
+## 12. Test baseline and deterministic validation
 
 Run the complete suite with:
 
@@ -635,7 +780,11 @@ PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 \
   python3 -m pytest -q
 ```
 
-The previous fixed count of `1038 passed, 7 subtests passed` belongs to the earlier active-development snapshot. Obsolete compatibility tests were later removed during Step 7 freeze cleanup. The current acceptance condition is that the complete current suite passes.
+Current frozen complete-suite result:
+```text
+927 passed, 8 subtests passed
+```
+The earlier `1038 passed, 7 subtests passed` count belongs to an obsolete active-development snapshot.
 
 Frozen Step 7 production acceptance:
 
@@ -643,54 +792,60 @@ Frozen Step 7 production acceptance:
 3500 final rows
 0 schema validation errors
 0 role conflicts
-final SHA-256 equals 735203f9ddf3b9f49e892edbb185936caa9db1cd46cbfcdd1b9e0f685958e2b5
+final SHA-256 equals 7b50f955058bbb159075b26a925bf5efc7aef15df189e11b649de63d8aa59fd8
 ```
 
-## 12. Immediate next actions: Step 8
-
-Do not repeat Step 7 migration, policy selection, or freeze work. Do not reopen Step 7 unless Step 8 exposes a concrete dependency defect.
+## 13. Immediate next actions: Step 9
+Do not repeat Step 6, Step 7, or Step 8 freeze work. Reopen an upstream Step only when Step 9 exposes a concrete dependency defect.
 
 The next closed-loop batch should:
+1. Inventory the frozen Step 9 inputs and confirm exact Anchor closure.
+2. Define the Reasoning schema, vocabulary, generator version, and rule version.
+3. Generate short causal reasoning from the frozen Structured CoC without inventing evidence.
+4. Preserve explicit links between reasoning statements and Step 8 node/link evidence.
+5. Keep model-input evidence separated from supervision-only Meta-action evidence.
+6. Use conservative unknown or partial reasoning when Step 8 has insufficient evidence.
+7. Produce exactly one Reasoning row per Keyframe.
+8. Add a single production entry point, Summary, JSON Schema, Contract, deterministic hashes, and human-review tooling.
+9. Run the complete test suite, rebuild, compare artifacts, clean development files, and update this handoff.
 
-1. Inventory Step 8 inputs from the frozen Keyframes, Meta-actions, Navigation, and Scene Facts.
-2. Freeze Step 8 schema, vocabulary, generator version, and rule version.
-3. Define the structured chain-of-causality contract.
-4. Keep model-input evidence and supervision-only evidence explicitly separated.
-5. Define conservative unknown states and explicit evidence references.
-6. Generate exactly one Step 8 row per Keyframe.
-7. Validate exact Anchor closure against `keyframe_contract_v0.1.json`.
-8. Add a unified production entry point, Summary, JSON Schema validation, deterministic hashes, and human-review tooling.
-9. Run the complete test suite, rebuild, compare artifacts, and clean temporary development files.
-10. Preserve frozen Step 7 bytes unless an explicitly approved upstream contract change is required.
+Non-blocking future optimization candidates, not reasons to reopen upstream Steps now:
+- Step 4 could consider a wider `maintain_speed` deadband for very small mixed-sign speed changes.
+- Step 7 could later evaluate whether an unmatched non-participating Side Actor should lower whole-record quality.
 
-## 13. Quick start for a new AI conversation
-
-This document is the only mandatory handoff file. After reading this file, a new assistant should be able to begin Step 8 without asking the user to repeat project history.
+## 14. Quick start for a new AI conversation
+This document is the only mandatory handoff file. After reading it, a new assistant should continue directly with Step 9 without asking the user to repeat Steps 1 through 8.
 
 Optional specialist references:
-
 - `CLIP_DATA_FORMAT.md`: authoritative raw Clip contract
 - `SCENE_FACT_DESIGN.md`: detailed frozen Step 7 technical contract
 
 Initial read-only checks:
-
 ```bash
 cd /home/lab/alpasim_ros2_ws/scripts/dataset_tools
-
-find step7 -maxdepth 1 -type f -print | sort
-find tests/step7 -maxdepth 1 -type f -print | sort
-
+find step8 -maxdepth 1 -type f -print | sort
+find tests/step8 -maxdepth 1 -type f -print | sort
 PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 \
   python3 -m pytest -q
-
 sha256sum \
-  "$ALPASIM_DATA_ROOT/annotations/v0.1-draft/scene_facts.jsonl"
+  "$ALPASIM_DATA_ROOT/annotations/v0.1-draft/navigation.jsonl" \
+  "$ALPASIM_DATA_ROOT/annotations/v0.1-draft/scene_facts.jsonl" \
+  "$ALPASIM_DATA_ROOT/annotations/v0.1-draft/structured_causality.jsonl"
 ```
 
-Expected final Step 7 SHA-256:
-
+Expected hashes:
 ```text
-735203f9ddf3b9f49e892edbb185936caa9db1cd46cbfcdd1b9e0f685958e2b5
+Navigation:
+  bf7d91b283ef3ef93f421d24cdb267d2cbcfa7c241ac20f56ba7dad5bcaf572d
+Scene Facts:
+  7b50f955058bbb159075b26a925bf5efc7aef15df189e11b649de63d8aa59fd8
+Structured CoC:
+  c0c6491551b74abaa66cc2e53706b8f23e85280f00c387c1d260fd823a869703
 ```
 
-After these checks, continue directly with Step 8. Do not rediscover Steps 1 through 7 unless a new failure demonstrates a specific dependency problem.
+Current complete-suite baseline:
+```text
+927 passed, 8 subtests passed
+```
+
+After these checks, continue directly with Step 9. Do not rediscover Steps 1 through 8 unless a new failure demonstrates a specific dependency problem.
