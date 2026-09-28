@@ -15,8 +15,12 @@ SYSTEM_PROMPT = (
     "maintain_speed, decelerate, or stop. quality_status describes evidence quality only; "
     "it is never a reason for any driving action. For insufficient_evidence, partial "
     "quality, or unknown quality, explicitly state the uncertainty or evidence limitation "
-    "in reasoning_summary. Do not output node IDs, link IDs, rule IDs, track IDs, hashes, "
-    "file names, or provenance. Keep reasoning_summary to one or two concise sentences."
+    "in reasoning_summary. Discuss only decision dimensions listed in "
+    "allowed_explanation_targets, even when stating uncertainty. Actor relative_position "
+    "values such as front_left and front_right are relative positions, not lane assignments; "
+    "never describe them as left lanes or right lanes unless an explicit lane field is supplied. "
+    "Do not output node IDs, link IDs, rule IDs, track IDs, hashes, file names, or provenance. "
+    "Keep reasoning_summary to one or two concise sentences."
 )
 
 
@@ -33,44 +37,28 @@ def evidence_key(index: int, relation: str, rule_id: str) -> str:
 
 def build_evidence_package(row: Mapping[str, Any]) -> dict[str, Any]:
     nodes = {node["node_id"]: node for node in row["structured_coc"]["nodes"]}
-    decisions: dict[str, Any] = {}
-    node_specs = (
-        ("lateral", "lateral_decision"),
-        ("longitudinal", "longitudinal_decision"),
-        ("navigation", "navigation_intent"),
-    )
-    for name, node_type in node_specs:
-        node = next(item for item in nodes.values() if item["node_type"] == node_type)
-        decisions[name] = dict(node["value"])
-
-    evidence = []
-    for index, link in enumerate(row["structured_coc"]["links"], start=1):
+    links = row["structured_coc"]["links"]
+    node_specs = (("lateral", "lateral_decision"), ("longitudinal", "longitudinal_decision"), ("navigation", "navigation_intent"))
+    referenced_node_types = set()
+    allowed_explanation_targets = set()
+    for link in links:
         source = nodes[link["source_node_id"]]
         target = nodes[link["target_node_id"]]
-        facts = {
-            "source_type": source["node_type"],
-            "source": source["value"],
-            "target_type": target["node_type"],
-            "target": target["value"],
-            "relation": link["relation"],
-            "confidence": link["confidence"],
-        }
-        evidence.append(
-            {
-                "evidence_key": evidence_key(index, link["relation"], link["rule_id"]),
-                "relation": link["relation"],
-                "confidence": link["confidence"],
-                "facts": facts,
-            }
-        )
-    return {
-        "record_id": row["anchor_id"],
-        "decisions": decisions,
-        "quality_status": row["quality"]["status"],
-        "quality_reasons": row["quality"]["reasons"],
-        "evidence": evidence,
-    }
-
+        referenced_node_types.update((source["node_type"], target["node_type"]))
+        if target["node_type"] in {"lateral_decision", "longitudinal_decision"}:
+            allowed_explanation_targets.add(target["node_type"])
+    decisions = {}
+    for name, node_type in node_specs:
+        if node_type in referenced_node_types:
+            node = next(item for item in nodes.values() if item["node_type"] == node_type)
+            decisions[name] = dict(node["value"])
+    evidence = []
+    for index, link in enumerate(links, start=1):
+        source = nodes[link["source_node_id"]]
+        target = nodes[link["target_node_id"]]
+        facts = {"source_type": source["node_type"], "source": source["value"], "target_type": target["node_type"], "target": target["value"], "relation": link["relation"], "confidence": link["confidence"]}
+        evidence.append({"evidence_key": evidence_key(index, link["relation"], link["rule_id"]), "relation": link["relation"], "confidence": link["confidence"], "facts": facts})
+    return {"record_id": row["anchor_id"], "decisions": decisions, "allowed_explanation_targets": sorted(allowed_explanation_targets), "quality_status": row["quality"]["status"], "quality_reasons": row["quality"]["reasons"], "evidence": evidence}
 
 def user_prompt(package: Mapping[str, Any]) -> str:
     instruction = (

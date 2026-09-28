@@ -1,1 +1,1 @@
-"""Step 9 local language reasoning generation."""
+"""Step 9 non-authoritative human-readable reasoning for review and debugging."""

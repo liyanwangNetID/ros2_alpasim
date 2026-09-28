@@ -6,7 +6,7 @@ from typing import Any, Mapping
 from jsonschema import Draft202012Validator
 from .checkpoint import append_jsonl, load_checkpoint
 from .config import Step9Config
-from .contract import GENERATOR_VERSION, PROMPT_VERSION, REASONING_FORMAT_VERSION, canonical_json, output_schema, read_input_records, sha256_file, source_record_sha256, validate_schema
+from .contract import GENERATOR_VERSION, PROMPT_VERSION, REASONING_FORMAT_VERSION, canonical_json, output_schema, read_input_records, sha256_file, source_record_sha256, usage_policy, validate_schema
 from .ollama_client import OllamaClient
 from .prompt import build_evidence_package
 from .validator import validate_response
@@ -45,7 +45,7 @@ def main() -> int:
         last_error=None
         for attempt in range(1,config.max_attempts+1):
             try:
-                response,envelope=client.generate(package); validate_response(response,package); record=output_record(source,response); validate_schema(record,output_schema()); append_jsonl(config.checkpoint_path,record); accepted+=1; last_error=None; break
+                response,envelope=client.generate(package,attempt=attempt,validation_feedback=last_error); validate_response(response,package); record=output_record(source,response); validate_schema(record,output_schema()); append_jsonl(config.checkpoint_path,record); accepted+=1; last_error=None; break
             except Exception as error:
                 last_error=str(error)
         if last_error is not None:
@@ -64,9 +64,9 @@ def main() -> int:
     schema=output_schema(); Draft202012Validator.check_schema(schema)
     output_text="".join(canonical_json(row)+"\n" for row in ordered); atomic_write(config.output_path,output_text); atomic_write(config.schema_path,json.dumps(schema,indent=2,sort_keys=True)+"\n")
     output_sha=sha256_file(config.output_path); schema_sha=sha256_file(config.schema_path); quality=Counter(row["quality_status"] for row in ordered)
-    summary={"summary_format_version":"0.1","record_count":len(ordered),"quality_status_counts":dict(sorted(quality.items())),"output_path":str(config.output_path),"output_sha256":output_sha,"schema_path":str(config.schema_path),"schema_sha256":schema_sha,"model":config.model,"model_details":details,"prompt_version":PROMPT_VERSION,"elapsed_seconds":time.monotonic()-started}
+    summary={"summary_format_version":"0.1","record_count":len(ordered),"quality_status_counts":dict(sorted(quality.items())),"output_path":str(config.output_path),"output_sha256":output_sha,"schema_path":str(config.schema_path),"schema_sha256":schema_sha,"model":config.model,"model_details":details,"prompt_version":PROMPT_VERSION,"usage_policy":usage_policy(),"elapsed_seconds":time.monotonic()-started}
     atomic_write(config.summary_path,json.dumps(summary,indent=2,sort_keys=True)+"\n")
-    contract={"contract_version":"0.1","producer_step":9,"record_count":len(ordered),"reasoning_format_version":REASONING_FORMAT_VERSION,"generator_version":GENERATOR_VERSION,"prompt_version":PROMPT_VERSION,"model":config.model,"model_details":details,"model_modified_at":metadata.get("modified_at"),"input_path":str(config.input_path),"input_sha256":input_contract["output_sha256"],"output_path":str(config.output_path),"output_sha256":output_sha,"schema_path":str(config.schema_path),"schema_sha256":schema_sha,"summary_path":str(config.summary_path),"reasoning_is_control_input":False}
+    contract={"contract_version":"0.1","producer_step":9,"record_count":len(ordered),"reasoning_format_version":REASONING_FORMAT_VERSION,"generator_version":GENERATOR_VERSION,"prompt_version":PROMPT_VERSION,"model":config.model,"model_details":details,"model_modified_at":metadata.get("modified_at"),"input_path":str(config.input_path),"input_sha256":input_contract["output_sha256"],"output_path":str(config.output_path),"output_sha256":output_sha,"schema_path":str(config.schema_path),"schema_sha256":schema_sha,"summary_path":str(config.summary_path),"reasoning_is_control_input":False,"usage_policy":usage_policy()}
     atomic_write(config.contract_path,json.dumps(contract,indent=2,sort_keys=True)+"\n")
     print("PASS: Step 9 local reasoning built, validated, summarized, and contracted."); return 0
 

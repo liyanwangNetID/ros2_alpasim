@@ -20,6 +20,10 @@ UNCERTAINTY_TERMS = (
     "lack of evidence",
     "lacks evidence",
     "no supported causal link",
+    "with caution",
+    "interpret cautiously",
+    "interpreted cautiously",
+    "cautious interpretation",
 )
 FORBIDDEN_TERMS = (
     "link_",
@@ -46,12 +50,41 @@ SUPPORT_LANGUAGE = (
     "because",
     "due to",
     "therefore",
+    "no evidence to suggest a need for",
+    "no evidence to suggest the need for",
 )
 QUALITY_AS_REASON_PATTERNS = (
     r"consistent with (?:the )?(?:overall )?(?:usable|partial|unknown) quality",
     r"(?:because|due to) (?:the )?(?:overall )?(?:usable|partial|unknown) quality",
     r"quality status (?:supports|justifies)",
 )
+
+LANE_INFERENCE_PATTERNS = (
+    r"\b(?:front|rear)[- ](?:left|right) lanes?\b",
+    r"\b(?:front|rear)[- ](?:left|right) and (?:front|rear)[- ](?:left|right) lanes?\b",
+    r"\b(?:front|rear)[- ](?:left|right) and (?:left|right) lanes?\b",
+)
+
+
+def _mentions_longitudinal_dimension(summary: str) -> bool:
+    lowered = summary.lower().replace("_", " ")
+    return any(re.search(pattern, lowered) for pattern in LONGITUDINAL_ACTION_PATTERNS)
+
+
+def _has_explicit_lane_evidence(package: Mapping[str, Any]) -> bool:
+    lane_fields = {
+        "lane_id",
+        "lane_relation",
+        "lane_assignment",
+        "adjacent_lane",
+        "same_lane",
+    }
+    for item in package["evidence"]:
+        facts = item.get("facts") or {}
+        for endpoint in (facts.get("source") or {}, facts.get("target") or {}):
+            if lane_fields.intersection(endpoint):
+                return True
+    return False
 
 
 def _supports_target(package: Mapping[str, Any], target_type: str) -> bool:
@@ -100,6 +133,24 @@ def validate_response(
     if not has_longitudinal_support and _mentions_unsupported_longitudinal_claim(summary):
         raise Step9ContractError(
             "summary claims support for a longitudinal action without longitudinal evidence"
+        )
+
+
+    allowed_targets = set(package.get("allowed_explanation_targets", ()))
+    if (
+        "longitudinal_decision" not in allowed_targets
+        and _mentions_longitudinal_dimension(summary)
+    ):
+        raise Step9ContractError(
+            "summary mentions longitudinal decision outside allowed explanation targets"
+        )
+
+    if (
+        any(re.search(pattern, lowered) for pattern in LANE_INFERENCE_PATTERNS)
+        and not _has_explicit_lane_evidence(package)
+    ):
+        raise Step9ContractError(
+            "summary infers a lane from relative actor position without lane evidence"
         )
 
     quality = package["quality_status"]

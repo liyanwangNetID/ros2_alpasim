@@ -9,6 +9,19 @@ REASONING_FORMAT_VERSION = "0.1-draft"
 GENERATOR_VERSION = "0.1.0"
 PROMPT_VERSION = "step9_local_reasoning_prompt_v0.2"
 
+def usage_policy() -> dict[str, Any]:
+    return {
+        "authoritative": False,
+        "default_training_usage": "excluded",
+        "human_review": True,
+        "sample_acceptance_dependency": False,
+        "action_target_dependency": False,
+        "dataset_split_dependency": False,
+        "optional_experimental_usage": "auxiliary_only",
+        "source_of_truth_step": 8,
+    }
+
+
 class Step9ContractError(ValueError):
     pass
 

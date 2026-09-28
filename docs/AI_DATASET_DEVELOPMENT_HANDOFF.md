@@ -1,8 +1,8 @@
 # AlpaSim VLM Dataset Development Handoff
 
-**Document status:** Updated to the frozen Step 8 codebase on 2026-09-25  
+**Document status:** Updated to the frozen Step 9 codebase on 2026-09-28  
 **Audience:** A new AI assistant or developer continuing this repository.  
-**Purpose:** This is the primary, self-contained handoff. A new conversation should be able to continue directly with Step 9 after reading this file, without requiring additional project history from the user.
+**Purpose:** This is the primary, self-contained handoff. A new conversation should be able to continue directly with Step 10 after reading this file, without requiring additional project history from the user.
 
 ## 1. Project goal
 
@@ -114,7 +114,7 @@ Step 11  Dataset split
 Step 12  Audit and statistics
 ```
 
-Steps 1 through 8 are implemented and frozen. Step 9 Reasoning is the next development step. Steps 10 through 12 have not started.
+Steps 1 through 9 are implemented and frozen. Step 10 Sample Manifest is the next development step. Steps 10 through 12 have not started.
 
 ## 6. Current code organization
 
@@ -795,57 +795,223 @@ Frozen Step 7 production acceptance:
 final SHA-256 equals 7b50f955058bbb159075b26a925bf5efc7aef15df189e11b649de63d8aa59fd8
 ```
 
-## 13. Immediate next actions: Step 9
-Do not repeat Step 6, Step 7, or Step 8 freeze work. Reopen an upstream Step only when Step 9 exposes a concrete dependency defect.
+## 13. Step 9: Human-readable reasoning
 
-The next closed-loop batch should:
-1. Inventory the frozen Step 9 inputs and confirm exact Anchor closure.
-2. Define the Reasoning schema, vocabulary, generator version, and rule version.
-3. Generate short causal reasoning from the frozen Structured CoC without inventing evidence.
-4. Preserve explicit links between reasoning statements and Step 8 node/link evidence.
-5. Keep model-input evidence separated from supervision-only Meta-action evidence.
-6. Use conservative unknown or partial reasoning when Step 8 has insufficient evidence.
-7. Produce exactly one Reasoning row per Keyframe.
-8. Add a single production entry point, Summary, JSON Schema, Contract, deterministic hashes, and human-review tooling.
-9. Run the complete test suite, rebuild, compare artifacts, clean development files, and update this handoff.
+### Status
 
-Non-blocking future optimization candidates, not reasons to reopen upstream Steps now:
-- Step 4 could consider a wider `maintain_speed` deadband for very small mixed-sign speed changes.
-- Step 7 could later evaluate whether an unmatched non-participating Side Actor should lower whole-record quality.
+```text
+PASS / FROZEN
+```
 
-## 14. Quick start for a new AI conversation
-This document is the only mandatory handoff file. After reading it, a new assistant should continue directly with Step 9 without asking the user to repeat Steps 1 through 8.
+Step 9 produces one short natural-language rendering for each frozen Step 8 Structured CoC record. Step 8 remains the authoritative structured fact and evidence layer. Step 9 is non-authoritative and exists for human review, debugging, data inspection, and research examples.
 
-Optional specialist references:
-- `CLIP_DATA_FORMAT.md`: authoritative raw Clip contract
-- `SCENE_FACT_DESIGN.md`: detailed frozen Step 7 technical contract
+The default training pipeline excludes Step 9. Step 9 availability or quality must not affect sample membership, action targets, acceptance decisions, or dataset splits. A future experimental training view may use Step 9 only as an optional auxiliary signal. The concrete dual-view design is deferred to Step 10.
 
-Initial read-only checks:
+### Production entry points
+
+```bash
+python3 -u -m step9.run --force
+python3 -u -m step9.audit_production --review-per-stratum 4
+```
+
+An isolated stratified local-model trial is available through:
+
+```bash
+python3 -u -m step9.trial
+```
+
+### Frozen code structure
+
+```text
+step9/__init__.py
+step9/audit_production.py
+step9/checkpoint.py
+step9/config.py
+step9/contract.py
+step9/ollama_client.py
+step9/prompt.py
+step9/run.py
+step9/trial.py
+step9/validator.py
+```
+
+Temporary failure trials, single-Anchor diagnostics, semantic-review inspectors, checkpoint invalidation utilities, and captured repair context were removed before freeze.
+
+### Local language model and generation configuration
+
+Step 9 was generated locally through Ollama with the following frozen production configuration:
+
+```text
+Ollama endpoint: http://127.0.0.1:11434
+Model: qwen3:14b
+Model family: qwen3
+Model format: GGUF
+Parameter size: 14.8B
+Quantization: Q4_K_M
+Model modified at: 2026-09-25T12:19:16.605623787+08:00
+Context window requested: 4096
+Maximum prediction tokens: 384
+Temperature: 0.0
+Base seed: 9
+Maximum attempts: 3
+Keep-alive: 30m
+Request timeout: 180 s
+Thinking mode: false
+Prompt version: step9_local_reasoning_prompt_v0.2
+Reasoning format: 0.1-draft
+Generator version: 0.1.0
+```
+
+Retries are deterministic per attempt. Attempt 1 uses seed 9. Attempt 2 uses seed 10 and receives the previous Validator error as feedback. Attempt 3 uses seed 11 and receives the latest Validator error as feedback. Production and diagnostic paths use the same retry contract.
+
+### Input and evidence rendering
+
+The formal input is:
+
+```text
+annotations/v0.1-draft/structured_causality.jsonl
+SHA-256: c0c6491551b74abaa66cc2e53706b8f23e85280f00c387c1d260fd823a869703
+```
+
+Each Step 8 row is rendered into an Evidence Package containing decisions, evidence items, quality status and reasons, and `allowed_explanation_targets`. Every generated statement must remain within the supplied relations and facts:
+
+- `aligns_with` means compatibility between Navigation and a lateral decision, never causation.
+- `supports` may support only the target decision named in that evidence item.
+- `insufficient_evidence` must be rendered conservatively as uncertainty or an evidence limitation.
+- A decision dimension outside `allowed_explanation_targets` must not be discussed, including statements that the dimension is uncertain.
+- Relative Actor positions such as `front_left` and `front_right` are not lane assignments.
+
+### Checkpoint and retry behavior
+
+Accepted records are stored under:
+
+```text
+reports/step9_local_llm/accepted.jsonl
+```
+
+A cached row is reusable only when its `source_record_sha256` matches the current Step 8 source row. Validator failures are fed back to the next retry. Formal output is written only after every expected Anchor has a valid accepted record. An incomplete generation run does not overwrite the formal artifact.
+
+### Quality gates
+
+The frozen Validator enforces the following known boundaries:
+
+- response JSON Schema validity;
+- used Evidence Key membership in the current Evidence Package;
+- no node IDs, link IDs, rule IDs, track IDs, hashes, file names, or provenance in readable reasoning;
+- `quality_status` cannot be used as a reason for a driving action;
+- `aligns_with` cannot be promoted to causation;
+- a concrete longitudinal claim requires evidence targeting `longitudinal_decision`;
+- reasoning cannot discuss a decision dimension outside `allowed_explanation_targets`;
+- `partial` and `unknown` outputs require limitations and explicit uncertainty language;
+- Actor relative position cannot be promoted to a lane assignment, including singular, plural, and coordinated lane wording;
+- retry attempt and Validator feedback must reach the production model call.
+
+These checks cover known structural and semantic failure modes. They are not a complete proof of natural-language correctness. Step 9 is accepted at a sufficiently reliable level rather than treated as perfect language supervision.
+
+### Formal outputs
+
+```text
+annotations/v0.1-draft/reasoning.jsonl
+schemas/reasoning_schema_v0.1-draft.json
+reports/step9_reasoning_summary_v01.json
+manifests/reasoning_contract_v0.1.json
+reports/step9_local_llm/production_audit_v01.json
+reports/step9_local_llm/production_review_sample_v01.jsonl
+```
+
+### Frozen result
+
+```text
+Input records: 3500
+Output records: 3500
+Checkpoint records: 3500
+Rejected records at freeze: 0
+usable: 2310
+partial: 777
+unknown: 413
+Stratified human-review sample: 21
+Production audit: PASS
+Complete test suite: 968 passed, 8 subtests passed
+```
+
+Frozen SHA-256 values:
+
+```text
+reasoning.jsonl
+  b65a2d068b46c97bf1a0721b5a1078cac6f18d24e9fc4c8b89256a3b4de9a8af
+reasoning_schema_v0.1-draft.json
+  cd9b8441dd6dc9504a6f0c4b8a3406c2de4400f5c2c2533c36e24384a26a4b26
+```
+
+The formal output and Schema were refreshed after the usage-policy update and retained identical hashes.
+
+### Frozen usage policy
+
+```text
+authoritative: false
+default_training_usage: excluded
+human_review: true
+sample_acceptance_dependency: false
+action_target_dependency: false
+dataset_split_dependency: false
+optional_experimental_usage: auxiliary_only
+source_of_truth_step: 8
+reasoning_is_control_input: false
+```
+
+The Usage Policy is recorded in both `step9_reasoning_summary_v01.json` and `reasoning_contract_v0.1.json`.
+
+### Known limitations
+
+- Natural-language quality is bounded by the local `qwen3:14b` model and its Q4_K_M quantization.
+- Known failure modes are guarded, but a larger future dataset may expose new linguistic variants not covered by the current Validator.
+- The Validator is a quality boundary, not a general semantic theorem prover.
+- Minor stylistic variation or awkward wording is acceptable when the text remains understandable and does not contradict Step 8.
+- Step 9 must not be treated as authoritative training truth. Its uncertainty is isolated by excluding it from the default training view.
+
+## 14. Immediate next actions: Step 10
+
+Do not repeat Step 6 through Step 9 freeze work unless a concrete downstream failure demonstrates an upstream dependency defect.
+
+Step 10 is the next development step. Before implementation, inspect the frozen upstream Contracts and define the Sample Manifest boundary. Step 10 must preserve the current Step 9 Usage Policy. The default training view excludes Step 9, while the data design should remain capable of supporting a future controlled experiment in which Step 9 is an optional auxiliary signal. The exact representation and comparison protocol must be decided during Step 10 development, not retrofitted into Step 9.
+
+Required Step 10 principles:
+
+1. Use Step 8 as the authoritative structured evidence source.
+2. Do not let Step 9 availability change sample membership, action targets, acceptance, or split assignment.
+3. Keep any human-review reasoning reference separate from the authoritative training core.
+4. Preserve identical sample identity and upstream supervision when comparing future training views.
+5. Add machine-verifiable Contracts and complete tests before producing formal Sample Manifest artifacts.
+
+## 15. Quick start for a new AI conversation
+
+This document is the only mandatory handoff file. After reading it, a new assistant should continue directly with Step 10 without asking the user to repeat Steps 1 through 9.
+
+Run the complete test suite first:
+
 ```bash
 cd /home/lab/alpasim_ros2_ws/scripts/dataset_tools
-find step8 -maxdepth 1 -type f -print | sort
-find tests/step8 -maxdepth 1 -type f -print | sort
-PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 \
-  python3 -m pytest -q
-sha256sum \
-  "$ALPASIM_DATA_ROOT/annotations/v0.1-draft/navigation.jsonl" \
-  "$ALPASIM_DATA_ROOT/annotations/v0.1-draft/scene_facts.jsonl" \
-  "$ALPASIM_DATA_ROOT/annotations/v0.1-draft/structured_causality.jsonl"
+PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest -q
 ```
 
-Expected hashes:
+Expected frozen baseline:
+
 ```text
-Navigation:
-  bf7d91b283ef3ef93f421d24cdb267d2cbcfa7c241ac20f56ba7dad5bcaf572d
-Scene Facts:
-  7b50f955058bbb159075b26a925bf5efc7aef15df189e11b649de63d8aa59fd8
-Structured CoC:
-  c0c6491551b74abaa66cc2e53706b8f23e85280f00c387c1d260fd823a869703
+968 passed, 8 subtests passed
 ```
 
-Current complete-suite baseline:
+Verify the frozen Step 9 artifact when needed:
+
+```bash
+python3 -u -m step9.audit_production --review-per-stratum 4
+```
+
+Expected result:
+
 ```text
-927 passed, 8 subtests passed
+status: PASS
+records: 3500
+checkpoint: 3500
 ```
 
-After these checks, continue directly with Step 9. Do not rediscover Steps 1 through 8 unless a new failure demonstrates a specific dependency problem.
+After these checks, inspect the current Step 10 code and upstream Contracts, then continue directly with Step 10.
