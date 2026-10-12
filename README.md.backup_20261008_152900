@@ -1036,9 +1036,12 @@ uv run --project src/driver python -m alpasim_driver.main \
   --config-path="/home/lab/alpasim/src/driver/configs" \
   --config-name=external_trajectory
 
+
+
 ## For Record Data
-"$ALPASIM_ROS2_WS/scripts/run_gt_dataset_streaming.sh"
+/home/lab/alpasim_ros2_ws/scripts/run_gt_dataset_streaming.sh"
 /home/lab/alpasim_ros2_ws/scripts/run_gt_dataset_streaming_all_unique.sh 2054 2369
+/home/lab/alpasim_ros2_ws/scripts/run_gt_dataset_streaming_static_occupancy.sh 1 3
 
 
 ## Run One Scene
