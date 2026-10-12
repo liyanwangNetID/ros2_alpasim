@@ -49,6 +49,15 @@ def generate_launch_description():
         / "config"
         / "map_markers.yaml"
     )
+    static_occupancy_server_config_path = (
+        bridge_share / "config" / "static_occupancy_server.yaml"
+    )
+    static_occupancy_marker_config_path = (
+        bridge_share / "config" / "static_occupancy_markers.yaml"
+    )
+    static_occupancy_filter_config_path = (
+        bridge_share / "config" / "static_occupancy_filter.yaml"
+    )
     ground_truth_server_config_path = (
         bridge_share
         / "config"
@@ -136,6 +145,30 @@ def generate_launch_description():
         ],
     )
 
+    static_occupancy_server = Node(
+        package="alpasim_bridge",
+        executable="static_occupancy_server",
+        name="static_occupancy_server",
+        output="screen",
+        parameters=[str(static_occupancy_server_config_path)],
+    )
+    static_occupancy_filter = Node(
+        package="alpasim_bridge",
+        executable="static_occupancy_filter",
+        name="static_occupancy_filter",
+        output="screen",
+        parameters=[str(static_occupancy_filter_config_path)],
+    )
+    static_occupancy_marker_publisher = Node(
+        package="alpasim_bridge",
+        executable="static_occupancy_marker_publisher",
+        name="static_occupancy_marker_publisher",
+        output="screen",
+        parameters=[
+            str(static_occupancy_marker_config_path),
+            {"use_sim_time": True},
+        ],
+    )
     ground_truth_trajectory_server = Node(
         package="alpasim_bridge",
         executable="ground_truth_trajectory_server",
@@ -269,6 +302,9 @@ def generate_launch_description():
             ego_state_publisher,
             actor_state_publisher,
             map_server,
+            static_occupancy_server,
+            static_occupancy_filter,
+            static_occupancy_marker_publisher,
             ground_truth_trajectory_server,
             navigation_state_publisher,
             ground_truth_future_publisher,

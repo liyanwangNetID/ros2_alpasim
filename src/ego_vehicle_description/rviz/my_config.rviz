@@ -265,6 +265,18 @@ Visualization Manager:
       Value: true
     - Class: rviz_default_plugins/MarkerArray
       Enabled: true
+      Name: MarkerArray_Static_Occupancy
+      Namespaces:
+        static_occupancy/columns: true
+      Topic:
+        Depth: 1
+        Durability Policy: Transient Local
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /alpasim/static_occupancy/markers
+      Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
       Name: MarkerArray_Nav
       Namespaces:
         navigation/executed_path: true

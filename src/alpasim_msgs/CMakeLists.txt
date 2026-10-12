@@ -7,6 +7,8 @@ find_package(builtin_interfaces REQUIRED)
 find_package(geometry_msgs REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
+  "msg/StaticOccupancy.msg"
+  "srv/GetStaticOccupancy.srv"
   "msg/EgoState.msg"
   "msg/ActorState.msg"
   "msg/ActorStateArray.msg"

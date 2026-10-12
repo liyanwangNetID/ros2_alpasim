@@ -1,0 +1,9 @@
+static_occupancy_marker_publisher:
+  ros__parameters:
+    input_topic: "/alpasim/static_occupancy"
+    marker_topic: "/alpasim/static_occupancy/markers"
+    color_r: 0.82
+    color_g: 0.84
+    color_b: 0.86
+    alpha: 0.55
+    min_display_height_m: 0.30

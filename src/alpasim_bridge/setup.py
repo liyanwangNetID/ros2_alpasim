@@ -72,6 +72,18 @@ setup(
             "clip_state_publisher = "
             "alpasim_bridge.clip_state_publisher:main"
         ),
+        (
+            "static_occupancy_server = "
+            "alpasim_bridge.static_occupancy_server:main"
+        ),
+        (
+            "static_occupancy_marker_publisher = "
+            "alpasim_bridge.static_occupancy_marker_publisher:main"
+        ),
+        (
+            "static_occupancy_filter = "
+            "alpasim_bridge.static_occupancy_filter:main"
+        ),
     ],
 },
 

@@ -1,0 +1,8 @@
+static_occupancy_filter:
+  ros__parameters:
+    raw_topic: "/alpasim/static_occupancy/raw"
+    filtered_topic: "/alpasim/static_occupancy"
+    map_service: "/alpasim/map/get_vector_map"
+    service_name: "/alpasim/static_occupancy/get"
+    road_base_tolerance_m: 3.00
+    polygon_margin_m: 0.40

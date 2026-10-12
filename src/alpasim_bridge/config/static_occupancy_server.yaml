@@ -1,0 +1,7 @@
+static_occupancy_server:
+  ros__parameters:
+    tcp_host: "0.0.0.0"
+    tcp_port: 15006
+    service_name: "/alpasim/static_occupancy/raw/get"
+    topic_name: "/alpasim/static_occupancy/raw"
+    cache_commit_timeout_s: 15.0

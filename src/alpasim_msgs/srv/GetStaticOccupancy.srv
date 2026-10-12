@@ -1,0 +1,10 @@
+# Empty requested_scene_id means return the current scene.
+string requested_scene_id
+# Zero means the caller has no cached revision.
+uint64 known_revision
+---
+bool success
+bool not_modified
+string message
+uint64 revision
+alpasim_msgs/StaticOccupancy static_occupancy
