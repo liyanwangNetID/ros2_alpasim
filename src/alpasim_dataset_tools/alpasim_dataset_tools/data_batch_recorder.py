@@ -10,8 +10,10 @@ Lifecycle:
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
+import sys
 import queue
 import re
 import threading
@@ -24,6 +26,7 @@ from typing import Any, TextIO
 import cv2
 import numpy as np
 import rclpy
+from ament_index_python.packages import get_package_share_directory
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
@@ -42,7 +45,11 @@ from alpasim_msgs.msg import (
     EgoTrajectory,
     Route,
 )
-from alpasim_msgs.srv import GetGroundTruthEgoTrajectory, GetVectorMap
+from alpasim_msgs.srv import (
+    GetGroundTruthEgoTrajectory,
+    GetStaticOccupancy,
+    GetVectorMap,
+)
 from builtin_interfaces.msg import Duration, Time
 from rosgraph_msgs.msg import Clock
 from sensor_msgs.msg import Image
@@ -110,6 +117,72 @@ def write_json_atomic(path: Path, payload: Any) -> None:
         encoding="utf-8",
     )
     temporary.replace(path)
+
+
+def file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as file:
+        for chunk in iter(lambda: file.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def save_static_occupancy_atomic(directory: Path, message: Any) -> None:
+    arrays = {
+        "grid_i": np.asarray(message.grid_i, dtype=np.int32),
+        "grid_j": np.asarray(message.grid_j, dtype=np.int32),
+        "min_z": np.asarray(message.min_z, dtype=np.float32),
+        "max_z": np.asarray(message.max_z, dtype=np.float32),
+        "point_count": np.asarray(message.point_count, dtype=np.uint32),
+        "flags": np.asarray(message.flags, dtype=np.uint16),
+    }
+    lengths = {name: len(value) for name, value in arrays.items()}
+    if len(set(lengths.values())) != 1 or lengths["grid_i"] <= 0:
+        raise ValueError(f"Invalid static occupancy array lengths: {lengths}")
+    if float(message.grid_size_xy_m) <= 0.0:
+        raise ValueError("Static occupancy grid size must be positive")
+    if not np.all(np.isfinite(arrays["min_z"])):
+        raise ValueError("Static occupancy min_z contains non-finite values")
+    if not np.all(np.isfinite(arrays["max_z"])):
+        raise ValueError("Static occupancy max_z contains non-finite values")
+    if np.any(arrays["max_z"] < arrays["min_z"]):
+        raise ValueError("Static occupancy contains inverted Z intervals")
+    if not str(message.scene_id) or not str(message.frame_id):
+        raise ValueError("Static occupancy scene_id or frame_id is empty")
+    if not str(message.representation).endswith("_road_filtered"):
+        raise ValueError(
+            "Expected road-filtered static occupancy, got "
+            f"{message.representation!r}"
+        )
+    directory.mkdir(parents=True, exist_ok=True)
+    final_npz = directory / "columns.npz"
+    temporary_npz = directory / "columns.npz.tmp"
+    with temporary_npz.open("wb") as file:
+        np.savez_compressed(file, **arrays)
+        file.flush()
+        os.fsync(file.fileno())
+    temporary_npz.replace(final_npz)
+    write_json_atomic(
+        directory / "metadata.json",
+        {
+            "schema_version": str(message.schema_version),
+            "scene_id": str(message.scene_id),
+            "scene_uuid": str(message.scene_uuid),
+            "frame_id": str(message.frame_id),
+            "representation": str(message.representation),
+            "semantic_labels": bool(message.semantic_labels),
+            "grid_size_xy_m": float(message.grid_size_xy_m),
+            "revision": int(message.revision),
+            "column_count": lengths["grid_i"],
+            "array_dtypes": {
+                name: str(value.dtype) for name, value in arrays.items()
+            },
+            "content_sha256": str(message.payload_sha256),
+            "npz_file_sha256": file_sha256(final_npz),
+            "storage": "npz_compressed",
+            "source_service": "/alpasim/static_occupancy/get",
+        },
+    )
 
 
 class JsonlWriter:
@@ -296,6 +369,7 @@ class RecordingSession:
             "actors",
             "route",
             "map",
+            "static_occupancy",
         ):
             (temporary_directory / relative).mkdir(
                 parents=True, exist_ok=True
@@ -333,11 +407,16 @@ class RecordingSession:
         self.gt_request_started = False
         self.gt_request_completed = False
         self.gt_request_error: str | None = None
+        self.map_scene_id: str | None = None
+        self.static_occupancy_request_started = False
+        self.static_occupancy_request_completed = False
+        self.static_occupancy_request_error: str | None = None
+        self.static_occupancy_scene_id: str | None = None
 
         write_json_atomic(
             temporary_directory / "metadata.json",
             {
-                "dataset_format_version": "0.2-batch",
+                "dataset_format_version": "0.3-batch",
                 "clip_number": clip_number,
                 "clip_name": clip_name,
                 "status": "recording",
@@ -368,18 +447,27 @@ class DatasetBatchRecorder(Node):
     def __init__(self) -> None:
         super().__init__("alpasim_data_batch_recorder")
 
-        self.declare_parameter(
-            "output_root", "/home/lab/data_all_alpasim"
-        )
+        self.declare_parameter("output_root", "")
         self.declare_parameter("clip_prefix", "test_clip_")
         self.declare_parameter("jpeg_quality", 90)
         self.declare_parameter("image_queue_size", 64)
         self.declare_parameter("report_period_sec", 5.0)
         self.declare_parameter("gt_service_duration_sec", 3600)
+        self.declare_parameter(
+            "static_occupancy_service",
+            "/alpasim/static_occupancy/get",
+        )
 
-        self.output_root = Path(
-            str(self.get_parameter("output_root").value)
-        ).expanduser()
+        configured_output_root = str(
+            self.get_parameter("output_root").value
+        ).strip()
+        if not configured_output_root:
+            raise ValueError(
+                "output_root is empty; load data_batch_recorder.yaml"
+            )
+        self.output_root = Path(configured_output_root).expanduser()
+        if not self.output_root.is_absolute():
+            raise ValueError("output_root must be an absolute path")
         self.output_root.mkdir(parents=True, exist_ok=True)
         self.clip_prefix = str(self.get_parameter("clip_prefix").value)
         self.jpeg_quality = int(
@@ -393,6 +481,9 @@ class DatasetBatchRecorder(Node):
         )
         self.gt_service_duration_sec = int(
             self.get_parameter("gt_service_duration_sec").value
+        )
+        self.static_occupancy_service = str(
+            self.get_parameter("static_occupancy_service").value
         )
 
         self._lifecycle_lock = threading.RLock()
@@ -432,6 +523,10 @@ class DatasetBatchRecorder(Node):
         self.gt_client = self.create_client(
             GetGroundTruthEgoTrajectory,
             "/alpasim/navigation/get_ground_truth_ego_trajectory",
+        )
+        self.static_occupancy_client = self.create_client(
+            GetStaticOccupancy,
+            self.static_occupancy_service,
         )
         self.service_timer = self.create_timer(
             0.5, self._try_service_requests
@@ -731,6 +826,22 @@ class DatasetBatchRecorder(Node):
                 )
 
             if (
+                not session.static_occupancy_request_started
+                and self.static_occupancy_client.service_is_ready()
+            ):
+                session.static_occupancy_request_started = True
+                request = GetStaticOccupancy.Request()
+                request.requested_scene_id = ""
+                request.known_revision = 0
+                future = self.static_occupancy_client.call_async(request)
+                future.add_done_callback(
+                    lambda result, target=session: (
+                        self._handle_static_occupancy_response(
+                            result, target
+                        )
+                    )
+                )
+            if (
                 session.first_sim_time_ns is not None
                 and not session.gt_request_started
                 and self.gt_client.service_is_ready()
@@ -770,11 +881,49 @@ class DatasetBatchRecorder(Node):
                 session.temporary_directory / "map" / "vector_map.json",
                 ros_message_to_dict(response.vector_map),
             )
+            session.map_scene_id = str(response.vector_map.scene_id)
             session.map_request_completed = True
         except Exception as exc:
             session.map_request_error = str(exc)
             self.get_logger().error(
                 f"Vector map request failed for {session.clip_name}: {exc}"
+            )
+
+    def _handle_static_occupancy_response(
+        self,
+        future: Any,
+        session: RecordingSession,
+    ) -> None:
+        try:
+            response = future.result()
+            if not response.success:
+                raise RuntimeError(response.message)
+            if response.not_modified:
+                raise RuntimeError(
+                    "Static occupancy service returned not_modified "
+                    "without local cache"
+                )
+            message = response.static_occupancy
+            save_static_occupancy_atomic(
+                session.temporary_directory / "static_occupancy",
+                message,
+            )
+            session.static_occupancy_scene_id = str(message.scene_id)
+            session.static_occupancy_request_completed = True
+            session.static_occupancy_request_error = None
+            self.get_logger().info(
+                "Saved filtered static occupancy for "
+                f"{session.clip_name}: scene={message.scene_id}, "
+                f"columns={len(message.grid_i)}"
+            )
+        except Exception as exc:
+            with self._lifecycle_lock:
+                if self._session is session and session.accepting_messages:
+                    session.static_occupancy_request_started = False
+            session.static_occupancy_request_error = str(exc)
+            self.get_logger().warning(
+                "Filtered static occupancy is not ready for "
+                f"{session.clip_name}; will retry: {exc}"
             )
 
     def _handle_gt_response(
@@ -849,6 +998,15 @@ class DatasetBatchRecorder(Node):
                 "/alpasim/route/model_input", 0
             ) > 0,
             "has_vector_map": session.map_request_completed,
+            "has_filtered_static_occupancy": (
+                session.static_occupancy_request_completed
+            ),
+            "static_occupancy_scene_matches_map": (
+                session.static_occupancy_request_completed
+                and session.map_request_completed
+                and session.static_occupancy_scene_id
+                == session.map_scene_id
+            ),
             "has_complete_gt_service": session.gt_request_completed,
         }
         required = (
@@ -862,6 +1020,8 @@ class DatasetBatchRecorder(Node):
             "has_actor_current",
             "has_navigation_route",
             "has_vector_map",
+            "has_filtered_static_occupancy",
+            "static_occupancy_scene_matches_map",
         )
         return {
             "valid": all(checks[name] for name in required),
@@ -883,6 +1043,11 @@ class DatasetBatchRecorder(Node):
                 else None
             ),
             "map_service_error": session.map_request_error,
+            "static_occupancy_service_error": (
+                session.static_occupancy_request_error
+            ),
+            "static_occupancy_scene_id": session.static_occupancy_scene_id,
+            "map_scene_id": session.map_scene_id,
             "gt_service_error": session.gt_request_error,
         }
 
@@ -905,7 +1070,7 @@ class DatasetBatchRecorder(Node):
         write_json_atomic(
             session.temporary_directory / "metadata.json",
             {
-                "dataset_format_version": "0.2-batch",
+                "dataset_format_version": "0.3-batch",
                 "clip_number": session.clip_number,
                 "clip_name": session.clip_name,
                 "status": (
@@ -941,6 +1106,8 @@ class DatasetBatchRecorder(Node):
             self.get_logger().info(
                 f"Recording {session.clip_name}: cameras={stats}, "
                 f"map={session.map_request_completed}, "
+                f"static_occupancy="
+                f"{session.static_occupancy_request_completed}, "
                 f"complete_gt={session.gt_request_completed}"
             )
 
@@ -958,7 +1125,28 @@ class DatasetBatchRecorder(Node):
         self._finalize_session(session)
 
 
+def default_config_path() -> Path:
+    return Path(
+        get_package_share_directory("alpasim_dataset_tools")
+    ) / "config" / "data_batch_recorder.yaml"
+
+
 def main(args=None) -> None:
+    if args is None:
+        command_line = list(sys.argv[1:])
+        if "--params-file" not in command_line:
+            config_path = default_config_path()
+            if not config_path.is_file():
+                raise FileNotFoundError(
+                    f"Default recorder configuration not found: {config_path}"
+                )
+            command_line = [
+                "--ros-args",
+                "--params-file",
+                str(config_path),
+                *command_line,
+            ]
+        args = command_line
     rclpy.init(args=args)
 
     node = DatasetBatchRecorder()

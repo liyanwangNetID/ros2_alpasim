@@ -1,0 +1,9 @@
+alpasim_data_batch_recorder:
+  ros__parameters:
+    output_root: "/home/lab/data_all_alpasim"
+    clip_prefix: "test_clip_"
+    jpeg_quality: 90
+    image_queue_size: 64
+    report_period_sec: 5.0
+    gt_service_duration_sec: 3600
+    static_occupancy_service: "/alpasim/static_occupancy/get"
