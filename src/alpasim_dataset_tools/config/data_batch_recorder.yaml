@@ -1,6 +1,6 @@
 alpasim_data_batch_recorder:
   ros__parameters:
-    output_root: "/home/lab/data_all_alpasim"
+    output_root: "/home/lab/data_NuRec"
     clip_prefix: "test_clip_"
     jpeg_quality: 90
     image_queue_size: 64

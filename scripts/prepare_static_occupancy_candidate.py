@@ -74,9 +74,6 @@ def main() -> int:
     }
     args.result_json.parent.mkdir(parents=True, exist_ok=True)
     args.result_json.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
-    if missing:
-        print(json.dumps(result, ensure_ascii=False))
-        return 2
     target = args.scene_cache / "all-usdzs" / f"{args.uuid}.usdz"
     target.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(downloaded, target)

@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
-# Stream unique logical scenes with newest-to-oldest artifact fallback.
-# A scene is run exactly once, using the first artifact that contains
-# metadata.yaml, mesh.ply, and mesh_ground.ply.
+# Stream scenes with download-timeout fallback: 2601, 2604, then 2507.
+# Static occupancy is optional and never gates simulation.
 set -u
 set -o pipefail
 
@@ -13,6 +12,7 @@ PREPARE_SCRIPT="${SCRIPT_DIRECTORY}/prepare_static_occupancy_candidate.py"
 START_INDEX="${1:-1}"
 END_INDEX="${2:-999999999}"
 REPORT_CSV="${STATIC_OCCUPANCY_STREAMING_REPORT:-/home/lab/Downloads/static_occupancy_streaming_report.csv}"
+DOWNLOAD_TIMEOUT_S="${ALPASIM_USDZ_DOWNLOAD_TIMEOUT_S:-180}"
 
 cd "${REPO_DIR}" || exit 1
 
@@ -93,7 +93,8 @@ import csv, sys
 path, scene_id = sys.argv[1], sys.argv[2]
 with open(path, newline="", encoding="utf-8") as f:
     rows = [r for r in csv.DictReader(f) if r["scene_id"].strip() == scene_id]
-rows.sort(key=lambda r: (int(r["candidate_rank"]), r["uuid"]))
+priority = {"2601": 1, "2601_local": 1, "2604": 2, "2507": 3}
+rows.sort(key=lambda r: (priority.get(r["release"].strip(), 99), int(r["candidate_rank"]), r["uuid"]))
 for r in rows:
     values = [r[k].strip() for k in (
         "candidate_rank", "candidate_count", "uuid", "release", "source_name", "scenes_csv"
@@ -110,13 +111,13 @@ PY
     echo "Scene index: ${scene_index}"
     echo "Scene ID: ${scene_id}"
     echo "Historical candidates: ${#CANDIDATES[@]}"
-    echo "Selection rule: newest complete artifact first"
+    echo "Selection rule: try 2601, then 2604, then 2507; download timeout=${DOWNLOAD_TIMEOUT_S}s"
     echo "============================================================"
 
     scene_completed=0
     scene_hard_failed=0
     attempted=0
-    missing_summaries=()
+    download_failures=()
 
     for candidate in "${CANDIDATES[@]}"; do
         attempted=$((attempted + 1))
@@ -133,38 +134,28 @@ PY
 
         echo
         echo "Candidate ${rank}/${candidate_count}: release=${release} source=${source_name} uuid=${uuid}"
-        echo "Downloading and checking USDZ members before starting simulation"
+        echo "Downloading USDZ with timeout=${DOWNLOAD_TIMEOUT_S}s"
         export HF_HOME="${HF_HOME_DIR}"
-
-        uv run --project src/wizard python "${PREPARE_SCRIPT}" \
+        timeout --signal=TERM --kill-after=15s "${DOWNLOAD_TIMEOUT_S}s" \
+            uv run --project src/wizard python "${PREPARE_SCRIPT}" \
             --catalog "${scenes_csv}" \
             --uuid "${uuid}" \
             --scene-cache "${SCENE_CACHE}" \
             --candidate-catalog "${CANDIDATE_CSV}" \
             --result-json "${PREFLIGHT_JSON}"
         prepare_code=$?
-
-        if [[ "${prepare_code}" -eq 2 ]]; then
-            missing="$(python3 - "${PREFLIGHT_JSON}" <<'PY'
-import json, sys
-x = json.load(open(sys.argv[1], encoding="utf-8"))
-print("+".join(x["missing_members"]))
-PY
-)"
-            echo "Candidate rejected: missing ${missing}"
-            missing_summaries+=("${release}:${uuid}:${missing}")
+        if [[ "${prepare_code}" -ne 0 ]]; then
+            if [[ "${prepare_code}" -eq 124 || "${prepare_code}" -eq 137 ]]; then
+                reason="download_timeout_${DOWNLOAD_TIMEOUT_S}s"
+            else
+                reason="download_status_${prepare_code}"
+            fi
+            echo "Candidate download failed; trying next version: ${reason}" >&2
+            download_failures+=("${release}:${uuid}:${reason}")
             cleanup_scene
             continue
         fi
-        if [[ "${prepare_code}" -ne 0 ]]; then
-            echo "Candidate preparation failed with status ${prepare_code}" >&2
-            append_report "${scene_index}" "${scene_id}" "preflight_error" "${uuid}" "${release}" "${source_name}" "${rank}" "${attempted}" "prepare_status_${prepare_code}"
-            scene_hard_failed=1
-            cleanup_scene
-            break
-        fi
-
-        echo "Candidate is complete; starting exactly one simulation for this logical scene"
+        echo "USDZ downloaded; starting exactly one simulation for this logical scene"
         ALPASIM_STATIC_OCCUPANCY_ENABLED=1 \
         uv run --project src/wizard alpasim_wizard \
             deploy=local \
@@ -190,7 +181,7 @@ PY
         run_code=$?
         if [[ "${run_code}" -eq 0 ]]; then
             echo "Scene completed with selected artifact ${uuid} (${release})"
-            append_report "${scene_index}" "${scene_id}" "success" "${uuid}" "${release}" "${source_name}" "${rank}" "${attempted}" "complete_static_occupancy"
+            append_report "${scene_index}" "${scene_id}" "success" "${uuid}" "${release}" "${source_name}" "${rank}" "${attempted}" "usdz_downloaded_static_optional"
             successful=$((successful + 1))
             scene_completed=1
         else
@@ -204,9 +195,9 @@ PY
     done
 
     if [[ "${scene_completed}" -eq 0 && "${scene_hard_failed}" -eq 0 ]]; then
-        detail="$(IFS=';'; echo "${missing_summaries[*]}")"
-        echo "No historical artifact contains complete static occupancy inputs: ${scene_id}" >&2
-        append_report "${scene_index}" "${scene_id}" "unsupported" "" "" "" "" "${attempted}" "${detail}"
+        detail="$(IFS=';'; echo "${download_failures[*]}")"
+        echo "No artifact version downloaded within the allowed time: ${scene_id}" >&2
+        append_report "${scene_index}" "${scene_id}" "download_failed" "" "" "" "" "${attempted}" "${detail}"
         unsupported=$((unsupported + 1))
     fi
 done
@@ -216,7 +207,7 @@ echo "============================================================"
 echo "Static occupancy streaming batch finished"
 echo "Selected logical scenes: ${selected_total}"
 echo "Successful scenes: ${successful}"
-echo "Unsupported scenes: ${unsupported}"
+echo "Download-failed scenes: ${unsupported}"
 echo "Failed scenes: ${failed}"
 echo "Report: ${REPORT_CSV}"
 echo "============================================================"

@@ -369,7 +369,6 @@ class RecordingSession:
             "actors",
             "route",
             "map",
-            "static_occupancy",
         ):
             (temporary_directory / relative).mkdir(
                 parents=True, exist_ok=True
@@ -416,7 +415,7 @@ class RecordingSession:
         write_json_atomic(
             temporary_directory / "metadata.json",
             {
-                "dataset_format_version": "0.3-batch",
+                "dataset_format_version": "0.4-batch-optional-static",
                 "clip_number": clip_number,
                 "clip_name": clip_name,
                 "status": "recording",
@@ -826,12 +825,13 @@ class DatasetBatchRecorder(Node):
                 )
 
             if (
-                not session.static_occupancy_request_started
+                session.map_request_completed
+                and not session.static_occupancy_request_started
                 and self.static_occupancy_client.service_is_ready()
             ):
                 session.static_occupancy_request_started = True
                 request = GetStaticOccupancy.Request()
-                request.requested_scene_id = ""
+                request.requested_scene_id = session.map_scene_id or ""
                 request.known_revision = 0
                 future = self.static_occupancy_client.call_async(request)
                 future.add_done_callback(
@@ -1020,8 +1020,6 @@ class DatasetBatchRecorder(Node):
             "has_actor_current",
             "has_navigation_route",
             "has_vector_map",
-            "has_filtered_static_occupancy",
-            "static_occupancy_scene_matches_map",
         )
         return {
             "valid": all(checks[name] for name in required),
@@ -1070,7 +1068,7 @@ class DatasetBatchRecorder(Node):
         write_json_atomic(
             session.temporary_directory / "metadata.json",
             {
-                "dataset_format_version": "0.3-batch",
+                "dataset_format_version": "0.4-batch-optional-static",
                 "clip_number": session.clip_number,
                 "clip_name": session.clip_name,
                 "status": (
